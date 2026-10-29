@@ -2056,19 +2056,31 @@ export function startApp(env){
     const rows=entries.filter(e=>isReal(e)&&norm(e.name)===norm(n));if(!rows.length)return "";
     const k=rows.map(keyFor).find(Boolean);if(!k)return "";
     const per={};rows.forEach(r=>{const v=valOf(r,k);if(v!=null)per[r.date]=k==="best"?Math.min(per[r.date]??Infinity,v):Math.max(per[r.date]??-Infinity,v)});
-    const pts=Object.keys(per).sort().slice(-10).map(d=>per[d]);if(!pts.length)return "";
-    const last=pts[pts.length-1],fmt=k==="mins"||k==="best"?fmtDur(last):k==="dist"?fmtDist(last):fmtN(r1(last))+(k==="reps"?" reps":" kg");
-    const lab=k==="orm"?"1RM ":k==="best"?"Mejor ":"";
-    let svg="",arrow="";
+    const days=Object.keys(per).sort().slice(-10),pts=days.map(d=>per[d]);if(!pts.length)return "";
+    const fmtV=v=>k==="mins"||k==="best"?fmtDur(v):k==="dist"?fmtDist(v):fmtN(r1(v))+(k==="reps"?"":" kg");
+    const what={orm:"1RM estimado (kg)",weight:"Peso máximo (kg)",reps:"Repeticiones",mins:"Tiempo (min:seg)",best:"Mejor tiempo (min:seg)",dist:"Distancia"}[k]||"";
+    const who=env.isCoach()&&ath&&ath.user_id!==me?"Progreso de "+(ath.name||"tu alumno"):"Tu progreso";
+    const last=pts[pts.length-1];
+    let arrow="";
+    if(pts.length>1){const d=last-pts[0],better=k==="best"?d<0:d>0;arrow=Math.abs(d)<1e-9?'<span class="ta">= sin cambio</span>':'<span class="ta '+(better?"up":"dn")+'">'+(better?"↑ ":"↓ ")+fmtV(Math.abs(d))+' desde el '+esc(fmtShort(days[0]))+'</span>'}
+    let svg="";
     if(pts.length>1){
-      let lo=Math.min(...pts),hi=Math.max(...pts);if(lo===hi){lo-=1;hi+=1}
-      const x=i=>2+i*80/(pts.length-1),y=v=>24-(v-lo)/(hi-lo)*22;
-      svg='<svg viewBox="0 0 84 26" aria-hidden="true"><polyline class="tl" points="'+pts.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ")+'"/><circle class="td" cx="'+x(pts.length-1)+'" cy="'+y(last)+'" r="3"/></svg>';
-      const d=last-pts[0],better=k==="best"?d<0:d>0;
-      arrow=Math.abs(d)<1e-9?'<span class="ta">=</span>':'<span class="ta '+(better?"up":"dn")+'">'+(better?"↑":"↓")+'</span>';
+      // gráfico con ejes: Y = valor (mín, medio, máx), X = fechas
+      const W=320,H=150,L=44,R=12,T=10,B=26;
+      let lo=Math.min(...pts),hi=Math.max(...pts);if(lo===hi){lo-=1;hi+=1}const pad=(hi-lo)*.1;lo-=pad;hi+=pad;
+      const x=i=>L+i*(W-L-R)/(pts.length-1),y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);
+      let g="";
+      [lo+pad,(lo+hi)/2,hi-pad].forEach(t=>{g+='<line class="tg" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(t).toFixed(1)+'" y2="'+y(t).toFixed(1)+'"/><text class="tyl" x="'+(L-6)+'" y="'+(y(t)+4).toFixed(1)+'" text-anchor="end">'+esc(fmtV(t).replace(" kg",""))+'</text>'});
+      g+='<line class="tax" x1="'+L+'" x2="'+L+'" y1="'+T+'" y2="'+(H-B)+'"/><line class="tax" x1="'+L+'" x2="'+(W-R)+'" y1="'+(H-B)+'" y2="'+(H-B)+'"/>';
+      const step=Math.max(1,Math.ceil(pts.length/4));
+      days.forEach((d,i)=>{const lastI=i===days.length-1;if(i%step===0||lastI){if(!lastI&&days.length-1-i<step/2&&i!==0)return;g+='<text class="txl" x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(i===0?"start":lastI?"end":"middle")+'">'+esc(fmtShort(d))+'</text>'}});
+      g+='<polyline class="tl" points="'+pts.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ")+'"/>'+pts.map((v,i)=>'<circle class="td" cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="'+(i===pts.length-1?4:2.5)+'"/>').join("");
+      svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(who+": "+what)+'">'+g+'</svg>';
     }
-    return '<div class="trend">'+svg+'<span>'+lab+'<b>'+esc(fmt)+'</b> '+arrow+'</span></div>';
+    return '<div class="trend"><div class="trh"><b>'+esc(who)+'</b><span>'+esc(what)+'</span></div>'+svg+
+      '<div class="trf">Último: <b>'+esc(fmtV(last))+'</b> '+arrow+(pts.length<2?'<span> · con 2 o más días verás el gráfico</span>':'')+'</div></div>';
   }
+
 
   // ---------- grilla de ejercicios: banco común / míos / del profesor ----------
   let exSeg="comun",fichaN=null;
