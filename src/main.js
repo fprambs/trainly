@@ -228,8 +228,9 @@ function renderAthBar() {
   if (!profile || profile.role !== "coach") { bar.hidden = true; return; }
   bar.hidden = false;
   const cur = currentId();
-  const active = students.filter(s => (todayAll[s.id] || []).length || s.id === cur || api.restOf(s.id));
-  const shown = active.length ? active : students.slice(0, 8);
+  // todos los alumnos, primero los que están entrenando hoy
+  const isActive = s => (todayAll[s.id] || []).length || s.id === cur || api.restOf(s.id) ? 1 : 0;
+  const shown = students.slice().sort((x, y) => isActive(y) - isActive(x) || x.name.localeCompare(y.name, "es"));
   const me = { id: myAthlete.id, name: "Yo" };
   const chip = a => {
     const st = statusOf(a);
@@ -237,10 +238,13 @@ function renderAthBar() {
       '<span class="av">' + esc((a.name || "?").charAt(0).toUpperCase()) + '</span><span class="at"><b>' + esc(a.name) + '</b><small data-st="' + esc(a.id) + '">' + esc(st.txt) + '</small></span>' +
       (st.prog != null ? '<i class="pb" style="width:' + Math.round(st.prog * 100) + '%"></i>' : '') + '</button>';
   };
-  bar.innerHTML = '<div class="athscroll">' + shown.map(chip).join("") + chip(me) + '</div>' +
-    '<button type="button" class="athall" data-sheet="students" aria-label="Todos mis alumnos">' + (students.length > shown.length ? "Todos (" + students.length + ")" : "Alumnos") + ' ▾</button>';
+  bar.innerHTML = '<div class="athscroll">' + chip(me) + shown.map(chip).join("") + '</div>' +
+    '<button type="button" class="athall" data-sheet="students" aria-label="Gestionar mis alumnos">Alumnos ▾</button>';
+  // el alumno actual siempre a la vista
+  if (cur !== lastCurChip) { lastCurChip = cur; const c = bar.querySelector(".athchip.cur"); if (c) try { c.scrollIntoView({ block: "nearest", inline: "nearest" }); } catch (e) {} }
 }
 let lastBarHtml = "";
+let lastCurChip = null;
 const alerted = new Set();
 function coachTick() {
   if (!profile || profile.role !== "coach") return;
