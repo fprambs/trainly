@@ -434,20 +434,32 @@ export function startApp(env){
 
   // ---------- imágenes ----------
   const searchURL=n=>"https://www.google.com/search?tbm=isch&q="+encodeURIComponent(n+" ejercicio gif");
+  // ícono de dos mancuernas (peso por mancuerna)
+  const DUO_IC='<svg class="duoic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg><b class="duox">×2</b>';
+  function weightLabel(n){
+    const lab=document.querySelector('label[for="weight"]');if(!lab)return;
+    const ps=!!n&&perSide(n);
+    lab.innerHTML=ps?DUO_IC+'Kg por mancuerna':'Peso (kg)';
+    lab.classList.toggle("ps",ps);
+    $("weight").placeholder=ps?"ej. 5 c/u":"ej. 40";
+  }
   function updateExCard(){
     const v=nameIn.value.trim(),card=$("excard");
-    if(!v||!inCatalog(v)){card.hidden=true;return}
+    if(!v||!inCatalog(v)){card.hidden=true;weightLabel(null);return}
     const n=canonical(v),r=imgOf(n);
     card.hidden=false;card.dataset.name=n;
-    $("exName").textContent=n;
+    $("exName").innerHTML=esc(n)+(perSide(n)?'<span class="sidepill">'+DUO_IC+'Peso por mancuerna</span>':'');
+    weightLabel(n);
+    const bank=originOf(n)==="comun";
+    $("exSearch").hidden=bank;
     $("exSearch").href=searchURL(n);
     const t=$("exThumb");
     const cur=t.dataset.src||"",want=r?srcOf(r):"";
     if(cur!==want){t.innerHTML=r?mediaHTML(r):"Sin imagen";t.dataset.src=want}
     t.disabled=!r;
-    $("exUpload").hidden=!assets;
+    $("exUpload").hidden=!assets||bank;
     $("exUpload").textContent=r?"Cambiar imagen":"Subir imagen";
-    $("exHint").textContent=!assets?"No se pueden subir imágenes ahora."
+    $("exHint").textContent=bank?(r?"Toca la imagen para verla en grande.":""):!assets?"No se pueden subir imágenes ahora."
       :r?"Toca la imagen para verla en grande."
       :"Busca una imagen, mantén presionada la que te guste para guardarla y luego súbela aquí.";
   }
@@ -661,7 +673,7 @@ export function startApp(env){
       '<div class="eegrid">'+
         '<div class="f wide"><label for="ee-name">Ejercicio</label><input id="ee-name" data-ef="name" value="'+esc(V("name",e.name))+'"></div>'+
         f("date","Fecha",e.date,'type="date"')+
-        f("sets","Series",e.sets)+f("reps","Reps",e.reps)+f("weight","Peso (kg)",e.weight)+f("dist","Distancia (m)",e.dist)+
+        f("sets","Series",e.sets)+f("reps","Reps",e.reps)+f("weight",perSide(e.name)?"Peso por mancuerna (kg c/u)":"Peso (kg)",e.weight)+f("dist","Distancia (m)",e.dist)+
         '<div class="f"><label for="ee-tm">Tiempo</label><div class="trow"><input id="ee-tm" data-ef="tm" class="num" type="number" inputmode="numeric" min="0" placeholder="min" value="'+esc(V("tm",ts==null?"":Math.floor(ts/60)))+'"><span>:</span><input id="ee-ts" data-ef="ts" class="num" type="number" inputmode="numeric" min="0" max="59" placeholder="seg" value="'+esc(V("ts",ts==null?"":ts%60))+'"></div></div>'+
         '<div class="f wide"><label for="ee-memo">Nota</label><input id="ee-memo" data-ef="memo" value="'+esc(V("memo",e.memo||""))+'"></div>'+
       '</div>'+
@@ -1191,7 +1203,7 @@ export function startApp(env){
       '<div class="dtop"><button type="button" class="iconbtn" data-dact="close" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><span>Ejercicio '+(idx+1)+' de '+day.length+'</span>'+
         '<span class="dtsp"></span></div>'+
       '<div class="dmedia">'+(r?mediaBig(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+(cat&&cat!=="otro"&&CATMAP[cat]?'<span class="dcat">'+esc(CATMAP[cat][1])+'</span>':'')+'</div>'+
-      '<div class="dhead"><h2 id="detName">'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★ Récord</span>':'')+'</h2>'+(lt?'<p>La vez pasada ('+esc(fmtShort(lt.date))+'): '+esc(lt.line)+'</p>':'')+(e.memo?'<p class="dmemo">'+esc(e.memo)+'</p>':'')+'</div>'+
+      '<div class="dhead"><h2 id="detName">'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★ Récord</span>':'')+'</h2>'+(perSide(e.name)?'<span class="sidepill">'+DUO_IC+'Peso por mancuerna · kg c/u</span>':'')+(lt?'<p>La vez pasada ('+esc(fmtShort(lt.date))+'): '+esc(lt.line)+'</p>':'')+(e.memo?'<p class="dmemo">'+esc(e.memo)+'</p>':'')+'</div>'+
       (editEntry===e.id?entryEditHTML(e):'')+
       (ds.length?'<ol class="srows" aria-label="Series">'+rows+'</ol>':'<p class="hint">Este ejercicio no tiene series. Agrega una con “+ Serie”.</p>')+
       '<div class="dacts"><button type="button" class="btnlike" data-dact="addset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Serie</button>'+
@@ -1258,7 +1270,7 @@ export function startApp(env){
     if(F.t){const ts=D.t==null?null:Math.round(D.t*60);
       f+='<div class="smf"><label for="sm-tm">Tiempo</label><div class="smtime"><input id="sm-tm" data-smk="tm" class="num" type="text" inputmode="numeric" placeholder="min" aria-label="Minutos" value="'+(ts==null?"":Math.floor(ts/60))+'"><span>:</span><input id="sm-ts" data-smk="ts" class="num" type="text" inputmode="numeric" placeholder="seg" aria-label="Segundos" value="'+(ts==null?"":pad(ts%60))+'"><small>min : seg</small></div></div>'}
     $("setModal").innerHTML='<div class="grab" aria-hidden="true"></div>'+
-      '<div class="smhead">'+(r?'<span class="smthumb">'+mediaHTML(r)+'</span>':'')+'<div><small>Serie '+(SM.i+1)+' de '+t+(SM.edit?' · hecha':'')+(otherName()?' · '+esc(otherName()):'')+'</small><h2 id="smTitle">'+esc(e.name)+'</h2></div></div>'+
+      '<div class="smhead">'+(r?'<span class="smthumb">'+mediaHTML(r)+'</span>':'')+'<div><small>Serie '+(SM.i+1)+' de '+t+(SM.edit?' · hecha':'')+(otherName()?' · '+esc(otherName()):'')+'</small><h2 id="smTitle">'+esc(e.name)+'</h2>'+(perSide(e.name)?'<span class="sidepill">'+DUO_IC+'Peso por mancuerna</span>':'')+'</div></div>'+
       '<div class="smfields">'+f+'</div><div id="smDelta">'+smDelta(e,D)+'</div>'+
       '<div class="smacts"><button type="button" class="btnlike" data-sma="cancel">Cancelar</button>'+(SM.edit?'<button type="button" class="btnlike danger" data-sma="undo">Desmarcar</button>':'')+
       '<button type="button" class="btnlike solid" id="smOk" data-sma="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>'+(SM.edit?'Guardar':'Confirmar serie')+'</button></div>';
