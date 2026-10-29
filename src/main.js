@@ -4,7 +4,9 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { startApp } from "./app.js";
 import { createAI } from "./ai.js";
 import { initTheme, appearanceHTML } from "./theme.js";
+import { initLayers } from "./layers.js";
 initTheme();
+initLayers();
 
 const $ = id => document.getElementById(id);
 const esc = s => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };

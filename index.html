@@ -104,7 +104,7 @@
     <div class="card addcard" id="addCard" role="dialog" aria-modal="true" aria-labelledby="addTitle" hidden>
       <div class="grab" aria-hidden="true"></div>
       <div class="addhead"><div><h2 id="addTitle">Agregar ejercicio</h2><p class="addfor" id="addFor"></p></div><button type="button" class="iconbtn" id="addClose" aria-label="Cerrar">✕</button></div>
-      <form id="form" autocomplete="off">
+      <form id="form" autocomplete="off" novalidate>
         <div class="f w4 combo"><label for="name">Ejercicio</label>
           <div class="namerow">
             <input id="name" required placeholder="Busca o escribe un ejercicio" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg">
@@ -141,9 +141,9 @@
             <button type="button" data-fk="memo" aria-pressed="false">Nota</button>
           </div>
         </div>
-        <div class="f"><label for="sets">Series</label><input id="sets" class="num" type="number" inputmode="numeric" min="0" placeholder="4"></div>
-        <div class="f" data-field="reps"><label for="reps">Reps</label><input id="reps" class="num" type="number" inputmode="numeric" min="0" placeholder="10"></div>
-        <div class="f" data-field="weight"><label for="weight">Peso (kg)</label><input id="weight" class="num" type="number" inputmode="decimal" min="0" step="0.5" placeholder="40"></div>
+        <div class="f"><label for="sets">Series</label><input id="sets" class="num" type="number" inputmode="numeric" min="0" placeholder="ej. 4"></div>
+        <div class="f" data-field="reps"><label for="reps">Reps</label><input id="reps" class="num" type="number" inputmode="numeric" min="0" placeholder="ej. 10"></div>
+        <div class="f" data-field="weight"><label for="weight">Peso (kg)</label><input id="weight" class="num" type="number" inputmode="decimal" min="0" step="0.5" placeholder="ej. 40"></div>
         <div class="f" data-field="dist" hidden><label for="dist">Distancia (m)</label><input id="dist" class="num" type="number" inputmode="numeric" min="0" step="50" placeholder="500"></div>
         <div class="f tfield" data-field="time" hidden><label for="tMin">Tiempo (min : seg)</label><div class="trow"><input id="tMin" class="num" type="number" inputmode="numeric" min="0" placeholder="min" aria-label="Minutos"><span>:</span><input id="tSec" class="num" type="number" inputmode="numeric" min="0" max="59" placeholder="seg" aria-label="Segundos"></div></div>
         <div class="f w4" data-field="memo" hidden><label for="memo">Nota</label><input id="memo" placeholder="Me costó la última serie, subir peso la próxima…"></div>
