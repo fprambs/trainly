@@ -1043,3 +1043,19 @@ body.kb .tabs .rest{margin-bottom:6px}
 #updX{flex:none;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:inherit;opacity:.7;font-size:1rem;cursor:pointer}
 .logo{border-radius:22%;object-fit:cover}
 .sh .shtop .slogo{width:34px;height:34px;border-radius:22%;flex:none}
+/* subidas en segundo plano */
+.upjobs{position:fixed;z-index:66;left:50%;transform:translateX(-50%);top:calc(10px + env(safe-area-inset-top,0px));width:min(calc(100% - 24px),420px);display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.upjob{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:14px;background:var(--toastbg);color:var(--toastink);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.upt{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.upt b{font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upt small{font-size:.78rem;opacity:.75}
+.upbar{height:4px;border-radius:99px;background:color-mix(in srgb,var(--toastink) 18%,transparent);overflow:hidden}
+.upbar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.upspin{width:20px;height:20px;border-radius:50%;border:3px solid color-mix(in srgb,var(--toastink) 25%,transparent);border-top-color:var(--accent);animation:upsp 1s linear infinite;flex:none}
+@keyframes upsp{to{transform:rotate(360deg)}}
+body.has-jobs .toast{top:calc(84px + env(safe-area-inset-top,0px))}
+/* deslizar entre días */
+body[data-tab="anotar"] .wrap{touch-action:pan-y}
+.sw-out{transition:transform .15s ease-in,opacity .15s ease-in}
+.sw-in{transition:transform .24s cubic-bezier(.2,.8,.2,1),opacity .24s ease-out}
+@media (prefers-reduced-motion:reduce){.sw-out,.sw-in{transition:none}}

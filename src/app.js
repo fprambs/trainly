@@ -466,21 +466,50 @@ export function startApp(env){
     try{const res=await assets.upload(file,p=>toast("Optimizando video… "+Math.round(p*100)+"%"));if(await bankSave(key,{image_url:res.url,image_type:res.contentType||file.type}))toast("Video actualizado en el banco común")}
     catch(e){toast("No se pudo subir. Revisa tu conexión e inténtalo de nuevo.")}
   }
+  // ---------- subidas en segundo plano: se puede seguir usando la app ----------
+  const jobs=[];
+  function renderJobs(){
+    const el=$("upJobs");document.body.classList.toggle("has-jobs",jobs.length>0);
+    if(!jobs.length){el.hidden=true;el.innerHTML="";return}
+    el.hidden=false;
+    el.innerHTML=jobs.map(j=>'<div class="upjob"><span class="upspin" aria-hidden="true"></span><div class="upt"><b>'+esc(j.label)+'</b><small>'+esc(j.stage)+'</small><span class="upbar"><i style="width:'+Math.round(j.p*100)+'%"></i></span></div></div>').join("");
+  }
+  function askNotify(){try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission().catch(()=>{})}catch(e){}}
+  async function notify(title,body){
+    toast(title+(body?" · "+body:""));
+    try{
+      if(!("Notification" in window)||Notification.permission!=="granted")return;
+      const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();
+      if(reg&&reg.showNotification)await reg.showNotification(title,{body:body||"",icon:"/icons/icon-192.png",badge:"/icons/icon-192.png",tag:"trainly-upload"});
+      else new Notification(title,{body:body||"",icon:"/icons/icon-192.png"});
+    }catch(e){}
+  }
+  window.addEventListener("beforeunload",e=>{if(jobs.length){e.preventDefault();e.returnValue=""}});
+  function bgUpload(label,file,onDone){
+    const isV=/^video\//.test(file.type);
+    const j={label,p:0,stage:isV?"Optimizando video…":"Subiendo…"};jobs.push(j);renderJobs();askNotify();
+    (async()=>{
+      try{
+        const res=await assets.upload(file,p=>{j.p=p*.9;j.stage="Optimizando video "+Math.round(p*100)+"%";renderJobs()});
+        j.p=.95;j.stage="Guardando…";renderJobs();
+        await onDone(res);
+        notify(label+" listo",res.info&&res.info!=="original"?"Video optimizado: "+res.info:"Ya está disponible");
+      }catch(e){toast(e&&e.message&&/MB/.test(e.message)?e.message:"No se pudo subir "+label+". Revisa tu conexión e inténtalo de nuevo.")}
+      finally{jobs.splice(jobs.indexOf(j),1);renderJobs()}
+    })();
+  }
   async function uploadFor(name,file){
     if(!assets||!file)return;
     if(!/^(image|video)\//.test(file.type)){flash("Ese archivo no es una imagen ni un video.",true);return}
     if(file.size>200*1024*1024){flash("El archivo pesa más de 200 MB. Prueba con uno más liviano.",true);return}
-    flash("Subiendo imagen…");
-    try{
-      const res=await assets.upload(file,p=>toast("Optimizando video… "+Math.round(p*100)+"%"));
+    flash("Se está subiendo en segundo plano. Puedes seguir usando la app.");
+    bgUpload((/^video/.test(file.type)?"Video de ":"Imagen de ")+name,file,async res=>{
       const key=imgKey(name),old=images[key];
       const map=Object.assign({},images);
       map[key]={id:res.id,url:res.url,type:res.contentType||file.type};
       await store.setImages(map);
       if(old&&old.id&&old.id!==res.id){try{await assets.delete(old.id)}catch(e){}}
-      const still=(file.type==="image/jpeg"||file.type==="image/heic")&&/gif/i.test(file.name||"");
-      flash("Imagen guardada para “"+name+"”"+(still?". Ojo: llegó como imagen fija, no como GIF.":""));toast("Imagen guardada para “"+name+"”");
-    }catch(e){const m=e&&e.message&&/MB/.test(e.message)?e.message:"No se pudo subir. Revisa tu conexión e inténtalo de nuevo.";flash(m,true);toast(m)}
+    });
   }
   document.addEventListener("paste",async e=>{
     if($("excard").hidden||!assets||$("tab-anotar").hidden)return;
@@ -1455,6 +1484,50 @@ export function startApp(env){
   const addDays=(s,n)=>{const x=parse(s);x.setDate(x.getDate()+n);return iso(x)};
   function goDay(d){$("date").value=d;$("repeatBox").hidden=true;editEntry=null;editing=null;renderToday();window.scrollTo(0,0)}
   $("dayPrev").addEventListener("click",()=>goDay(addDays($("date").value||today,-1)));
+  // ---------- deslizar hacia los lados para cambiar de día (táctil) ----------
+  (()=>{
+    const tab=$("tab-anotar");let sw=null,swipedAt=0;
+    // se mueve solo el contenido (no el botón + ni las hojas, que son fijos)
+    const parts=()=>["dayState","nextBox","todayList","emptyDay"].map(id=>$(id)).concat([document.querySelector("#tab-anotar .todayhead"),document.querySelector("#dayNav .daypick")]).filter(Boolean);
+    const setT=(tr,op,cls)=>parts().forEach(el=>{el.style.transform=tr;el.style.opacity=op;el.classList.remove("sw-out","sw-in");if(cls)el.classList.add(cls)});
+    const busy=()=>drag||DET||SM||!$("addCard").hidden||!$("calPop").hidden||FS.open;
+    // se escucha en toda la pantalla (también en el espacio vacío bajo la lista), solo en la pestaña Hoy
+    document.addEventListener("pointerdown",ev=>{
+      if(ev.pointerType==="mouse"||busy()||tab.hidden)return;
+      if(ev.target.closest("input,textarea,select,.calpop,.repeat,.eedit,.fab,.addcard,.tabs,.athbar,.exdet,.smov,.sheetov,.focus,.lb,.sumov,.addback"))return;
+      sw={x0:ev.clientX,y0:ev.clientY,t0:Date.now(),id:ev.pointerId,dir:0,dx:0};
+    },{passive:true});
+    document.addEventListener("pointermove",ev=>{
+      if(!sw||ev.pointerId!==sw.id)return;
+      const dx=ev.clientX-sw.x0,dy=ev.clientY-sw.y0;
+      if(!sw.dir){
+        if(Math.abs(dx)>14&&Math.abs(dx)>Math.abs(dy)*1.4){sw.dir=1;cancelPress()}
+        else if(Math.abs(dy)>14){sw=null;return}
+        else return;
+      }
+      sw.dx=dx;setT("translateX("+(dx*.55)+"px)",String(Math.max(.35,1-Math.abs(dx)/600)));
+    },{passive:true});
+    const end=ev=>{
+      if(!sw||(ev&&ev.pointerId!==sw.id))return;
+      const s0=sw;sw=null;
+      if(!s0.dir)return;
+      swipedAt=Date.now();
+      const go=Math.abs(s0.dx)>70||(Math.abs(s0.dx)>40&&Date.now()-s0.t0<250);
+      if(!go){setT("","","sw-in");return}
+      const step=s0.dx<0?1:-1; // deslizar a la izquierda = día siguiente
+      setT("translateX("+(s0.dx<0?-45:45)+"%)","0","sw-out");
+      setTimeout(()=>{
+        goDay(addDays($("date").value||today,step));
+        setT("translateX("+(s0.dx<0?35:-35)+"%)","0");
+        requestAnimationFrame(()=>requestAnimationFrame(()=>setT("","","sw-in")));
+        if(navigator.vibrate)try{navigator.vibrate(8)}catch(e){}
+      },150);
+    };
+    document.addEventListener("pointerup",end);
+    document.addEventListener("pointercancel",ev=>{if(sw&&sw.dir)end(ev);else sw=null});
+    // un deslizamiento no debe abrir la tarjeta que estaba bajo el dedo
+    document.addEventListener("click",ev=>{if(Date.now()-swipedAt<350){ev.stopPropagation();ev.preventDefault()}},true);
+  })();;
   // ---------- calendario propio ----------
   let calMonth=null;
   function openCal(open){
@@ -2187,15 +2260,18 @@ export function startApp(env){
     if(!BK||!bkDirty())return;
     const d=BK,b=bankRows.find(x=>x.key===d.key);if(!b)return;
     const name=d.name.trim().replace(/\s+/g," ");if(!name){toast("Escribe un nombre");return}
-    btn.disabled=true;btn.textContent=d.file?"Subiendo video…":"Guardando…";
     const patch={};
     if(name!==b.name)patch.name=name;
     if(d.cat!==(b.category||""))patch.category=d.cat;
-    try{if(d.file){const res=await assets.upload(d.file,p=>{btn.textContent="Optimizando video… "+Math.round(p*100)+"%"});btn.textContent="Subiendo…";patch.image_url=res.url;patch.image_type=res.contentType||d.file.type;if(res.info&&res.info!=="original")toast("Video optimizado: "+res.info)}}
-    catch(e){toast(e&&e.message&&/MB/.test(e.message)?e.message:"No se pudo subir el video. Revisa tu conexión.");btn.disabled=false;btn.textContent="Guardar cambios";return}
-    const prevN=fichaN;if(patch.name)fichaN=patch.name;
+    const file=d.file,key=d.key;
+    btn.disabled=true;
+    if(Object.keys(patch).length){const prevN=fichaN;if(patch.name)fichaN=patch.name;if(!await bankSave(key,patch)){fichaN=prevN;btn.disabled=false;return}}
     bkReset();
-    if(await bankSave(d.key,patch))toast("Cambios guardados");else{fichaN=prevN;renderFicha()}
+    if(file){
+      closeFicha(true);
+      bgUpload("Video de "+name,file,async res=>{if(!await bankSave(key,{image_url:res.url,image_type:res.contentType||file.type}))throw new Error("guardar")});
+      toast("Subiendo el video en segundo plano. Puedes seguir usando la app.");
+    }else{renderFicha();toast("Cambios guardados")}
   }
   $("fichaOv").addEventListener("click",e=>{if(e.target.id==="fichaOv"||e.target.closest("[data-fclose]"))closeFicha()});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&fichaN&&$("lb").hidden)closeFicha()});
