@@ -2122,11 +2122,20 @@ export function startApp(env){
   function adminBankHTML(n,i){
     const b=bankRowOf(n),cur=b&&b.category||catOf(n);
     return '<div class="adminbox"><b>Administrar banco común</b>'+
-      '<label class="f"><span>Nombre</span><div class="rowin"><input id="bkName" value="'+esc(b?b.name:n)+'"><button type="button" class="btnlike" data-bkname="'+i+'">Guardar</button></div></label>'+
+      '<label class="f"><span>Nombre</span><input id="bkName" data-bki="'+i+'" value="'+esc(b?b.name:n)+'" enterkeyhint="done" autocomplete="off"></label>'+
       '<div class="catpick" role="group" aria-label="Músculo">'+CATS.map(c=>'<button type="button" data-bkcat="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cur)+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>'+
       '<div class="fiacts"><button type="button" class="btnlike" data-bkimg="'+i+'">Cambiar video o imagen</button><button type="button" class="btnlike danger" data-bkdel="'+i+'">Quitar del banco</button></div>'+
-      '<p class="hint">Los cambios los ven todos los usuarios.</p></div>';
+      '<p class="hint">Cada cambio se guarda al instante y lo ven todos los usuarios.</p></div>';
   }
+  async function saveBankName(inp){
+    if(!inp||inp.dataset.saving)return;
+    const n=catalog[+inp.dataset.bki],b=bankRowOf(n),v=inp.value.trim().replace(/\s+/g," ");
+    if(!b||!v||v===b.name)return;
+    inp.dataset.saving="1";const prevN=fichaN;fichaN=v;
+    if(await bankSave(b.key,{name:v}))toast("Nombre guardado: "+v);else{fichaN=prevN;renderFicha()}
+  }
+  $("ficha").addEventListener("focusout",e=>{if(e.target.id==="bkName")saveBankName(e.target)});
+  $("ficha").addEventListener("keydown",e=>{if(e.target.id==="bkName"&&e.key==="Enter"){e.preventDefault();e.target.blur()}});
   $("fichaOv").addEventListener("click",e=>{if(e.target.id==="fichaOv"||e.target.closest("[data-fclose]"))closeFicha()});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&fichaN&&$("lb").hidden)closeFicha()});
   function updateCatHint(){
