@@ -851,7 +851,9 @@ export function startApp(env){
     entries.filter(isReal).forEach(e=>(groups[norm(e.name)]=groups[norm(e.name)]||[]).push(e));
     Object.values(groups).forEach(g=>{
       const k=g.map(keyFor).find(Boolean);if(!k)return;
-      const vals=g.map(e=>({e,v:valOf(e,k)})).filter(o=>o.v!=null);
+      // solo se compara lo comparable: mismo tipo de marca (y misma distancia si es por tiempo)
+      const d0=k==="best"?(g.find(e=>keyFor(e)==="best")||{}).dist:null;
+      const vals=g.filter(e=>keyFor(e)===k&&(k!=="best"||e.dist===d0)).map(e=>({e,v:valOf(e,k)})).filter(o=>o.v!=null);
       if(vals.length<2)return;
       const max=k==="best"?Math.min(...vals.map(o=>o.v)):Math.max(...vals.map(o=>o.v));
       const holder=vals.filter(o=>o.v===max).sort((a,b)=>a.e.date.localeCompare(b.e.date)||(a.e.createdAt||0)-(b.e.createdAt||0))[0];
@@ -864,7 +866,7 @@ export function startApp(env){
   let toastAct=null;
   function toast(msg,star,action){
     const t=$("toast");toastAct=action||null;
-    t.innerHTML=(star?'<b>★</b> ':'')+esc(msg)+(action?' <button type="button" id="toastBtn">'+esc(action.label)+'</button>':'');
+    t.innerHTML='<span class="tmsg">'+(star?'<b>★</b> ':'')+esc(msg)+'</span>'+(action?'<button type="button" id="toastBtn">'+esc(action.label)+'</button>':'');
     t.classList.toggle("gold",!!star);
     t.style.bottom=""; // arriba de la pantalla: no tapa la barra Te toca ni las ventanas
     if(star)burst();
@@ -1946,7 +1948,9 @@ export function startApp(env){
     const mchips=hasOrm?'<div class="metrics" role="group" aria-label="Qué graficar">'+[["orm","1RM estimado"],["weight","Peso máximo"],["vol","Volumen"]].map(([k,l])=>'<button type="button" data-metric="'+k+'" aria-pressed="'+(key===k)+'">'+l+'</button>').join("")+'</div>':'';
     if(!key){box.innerHTML='<p class="note">Este ejercicio no tiene peso, tiempo ni repeticiones anotadas todavía.</p>';return}
     const per={};
-    rows.forEach(r=>{const v=valOf(r,key);if(v!=null)per[r.date]=key==="vol"?(per[r.date]||0)+v:key==="best"?Math.min(per[r.date]??Infinity,v):Math.max(per[r.date]??-Infinity,v)});
+    // "mejor tiempo" solo compara la misma distancia (no mezclar 1 km con intervalos de 1 minuto)
+    const bestD=key==="best"?(rows.find(r=>r.dist!=null)||{}).dist:null;
+    rows.filter(r=>key!=="best"||r.dist===bestD).forEach(r=>{const v=valOf(r,key);if(v!=null)per[r.date]=key==="vol"?(per[r.date]||0)+v:key==="best"?Math.min(per[r.date]??Infinity,v):Math.max(per[r.date]??-Infinity,v)});
     const pts=Object.keys(per).sort().map(d=>({d,v:per[d]}));
     const label={orm:"1RM estimado, mejor serie del día",vol:"Volumen por día",best:"Mejor tiempo por día en "+fmtDist((rows.find(r=>r.dist!=null)||{}).dist||0),weight:"Peso máximo por día",dist:"Distancia máxima por día",mins:"Tiempo máximo por día",reps:"Repeticiones máximas por día"}[key];
     const fv=v=>key==="mins"||key==="best"?fmtDur(v):key==="dist"||key==="vol"?Math.round(v).toLocaleString("es-CL"):fmtN(Math.round(v*10)/10);
