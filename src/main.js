@@ -13,6 +13,28 @@ const iso = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.get
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
 }
+// ---------- aviso de versión nueva: la app instalada puede quedar abierta días con el código viejo ----------
+if (import.meta.env.PROD) {
+  const myScript = () => { const s = document.querySelector('script[type="module"][src*="/assets/"]'); return s ? new URL(s.src, location.href).pathname : null; };
+  let lastCheck = 0;
+  async function checkUpdate() {
+    if (Date.now() - lastCheck < 60e3 || $("updBtn")) return;
+    lastCheck = Date.now();
+    try {
+      const html = await (await fetch("/", { cache: "no-store" })).text();
+      const m = html.match(/\/assets\/index-[\w-]+\.js/), cur = myScript();
+      if (m && cur && m[0] !== cur) {
+
+        const t = $("toast");
+        t.innerHTML = 'Hay una versión nueva de la app <button type="button" id="updBtn" class="btnlike">Actualizar</button>';
+        t.hidden = false; t.style.bottom = "";
+        $("updBtn").onclick = () => location.reload();
+      }
+    } catch (e) {}
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkUpdate(); });
+  setInterval(checkUpdate, 10 * 60e3);
+}
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   $("boot").innerHTML = '<div class="setupmsg"><h1>Falta configurar Supabase</h1><p>Define <code>VITE_SUPABASE_URL</code> y <code>VITE_SUPABASE_ANON_KEY</code> en Netlify (o en un archivo <code>.env</code>) y vuelve a publicar.</p></div>';
@@ -151,6 +173,7 @@ async function boot(session) {
   startApp({
     sb, userId: profile.id, api,
     isCoach: () => profile.role === "coach",
+    isAdmin: () => !!profile.is_admin,
     ai: createAI(sb),
     initialAthlete: initial,
     onEntryChange: p => { onCoachEntryChange(p); },

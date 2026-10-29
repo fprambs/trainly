@@ -367,3 +367,30 @@ drop policy if exists bank_read on public.bank_exercises;
 create policy bank_read on public.bank_exercises for select to authenticated using (true);
 revoke all on public.bank_exercises from anon;
 grant select on public.bank_exercises to authenticated;
+
+-- ---------------------------------------------------------------------
+-- Administración del banco común
+-- ---------------------------------------------------------------------
+alter table public.profiles add column if not exists is_admin boolean not null default false;
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select is_admin from profiles where id = auth.uid()), false)
+$$;
+revoke execute on function public.is_admin() from anon;
+drop policy if exists bank_admin_ins on public.bank_exercises;
+drop policy if exists bank_admin_upd on public.bank_exercises;
+drop policy if exists bank_admin_del on public.bank_exercises;
+create policy bank_admin_ins on public.bank_exercises for insert to authenticated with check (public.is_admin());
+create policy bank_admin_upd on public.bank_exercises for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy bank_admin_del on public.bank_exercises for delete to authenticated using (public.is_admin());
+grant insert, update, delete on public.bank_exercises to authenticated;
+-- nadie puede "tapar" un ejercicio del banco con una copia propia
+create or replace function public.skip_bank_shadow() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if exists(select 1 from bank_exercises b where b.key = new.key) then return null; end if;
+  return new;
+end $$;
+drop trigger if exists exercises_skip_bank on public.exercises;
+create trigger exercises_skip_bank before insert or update on public.exercises
+  for each row execute function public.skip_bank_shadow();

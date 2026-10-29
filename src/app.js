@@ -115,10 +115,37 @@ export function startApp(env){
       if(!by[k].img&&b.image_url)by[k].img={id:"bank:"+k,url:b.image_url,type:b.image_type||"image/png"};
       if(!by[k].cat&&b.category)by[k].cat={c:b.category,by:"bank"};
     });
+    const alias={};bankRows.forEach(b=>{const a=imgKey(b.name);if(a!==b.key&&!by[a])alias[a]=b.key});
     catalog=Object.values(by).map(v=>v.name).sort((a,b)=>a.localeCompare(b,"es"));
     images={};cats={};
     Object.keys(by).forEach(k=>{if(by[k].img)images[k]=by[k].img;if(by[k].cat)cats[k]=by[k].cat});
+    Object.keys(alias).forEach(a=>{const k=alias[a];if(by[k].img)images[a]=by[k].img;if(by[k].cat)cats[a]=by[k].cat;exOrigin[a]="comun"});
   }
+  // ---------- administración del banco común (solo admin) ----------
+  const isAdmin=()=>!!(env.isAdmin&&env.isAdmin());
+  const bankRowOf=n=>bankRows.find(b=>b.key===imgKey(n)||imgKey(b.name)===imgKey(n))||null;
+  async function bankSave(key,patch){
+    const {error}=await sb.from("bank_exercises").update(patch).eq("key",key);
+    if(error){toast("No se pudo guardar en el banco: "+error.message);return false}
+    const b=bankRows.find(x=>x.key===key);if(b)Object.assign(b,patch);
+    deriveCatalog();render();return true;
+  }
+  async function bankPromote(n){
+    const k=imgKey(n),own=ownExRow(k),img=imgOf(n),c=cats[k];
+    const row={key:k,name:n,image_url:img?img.url:null,image_type:img?img.type:null,category:c?c.c:catOf(n)};
+    const {error}=await sb.from("bank_exercises").insert(row);
+    if(error){toast("No se pudo pasar al banco: "+error.message);return}
+    bankRows.push(row);
+    if(own){exRows=exRows.filter(x=>x!==own);bg({t:"delm",table:"exercises",match:{owner_id:me,key:k}})}
+    deriveCatalog();exSeg="comun";render();toast("“"+n+"” ahora está en el banco común");
+  }
+  async function bankDelete(n){
+    const b=bankRowOf(n);if(!b)return;
+    const {error}=await sb.from("bank_exercises").delete().eq("key",b.key);
+    if(error){toast("No se pudo quitar: "+error.message);return}
+    bankRows=bankRows.filter(x=>x!==b);deriveCatalog();render();toast("Quitado del banco: "+b.name);
+  }
+  let pendingBank=null;
   const originOf=n=>exOrigin[imgKey(n)]||null;
   const ORIGIN_TXT={comun:"Común",mio:"Mío",profe:"Profesor",alumno:"Alumno"};
   const originTag=n=>{const o=originOf(n);return o?'<span class="otag o-'+o+'">'+ORIGIN_TXT[o]+'</span>':''};
@@ -400,8 +427,17 @@ export function startApp(env){
   $("exUpload").addEventListener("click",()=>pickFile($("excard").dataset.name));
   $("fileIn").addEventListener("change",async e=>{
     const f=e.target.files&&e.target.files[0];e.target.value="";
+    if(pendingBank){const k=pendingBank;pendingBank=null;await uploadBank(k,f);return}
     if(pendingName)await uploadFor(pendingName,f);
   });
+  async function uploadBank(key,file){
+    if(!assets||!file)return;
+    if(!/^(image|video)\//.test(file.type)){toast("Ese archivo no es una imagen ni un video.");return}
+    if(file.size>20*1024*1024){toast("El archivo pesa más de 20 MB. Prueba con uno más liviano.");return}
+    toast("Subiendo video…");
+    try{const res=await assets.upload(file);if(await bankSave(key,{image_url:res.url,image_type:res.contentType||file.type}))toast("Video actualizado en el banco común")}
+    catch(e){toast("No se pudo subir. Revisa tu conexión e inténtalo de nuevo.")}
+  }
   async function uploadFor(name,file){
     if(!assets||!file)return;
     if(!/^(image|video)\//.test(file.type)){flash("Ese archivo no es una imagen ni un video.",true);return}
@@ -415,7 +451,7 @@ export function startApp(env){
       await store.setImages(map);
       if(old&&old.id&&old.id!==res.id){try{await assets.delete(old.id)}catch(e){}}
       const still=(file.type==="image/jpeg"||file.type==="image/heic")&&/gif/i.test(file.name||"");
-      flash("Imagen guardada para “"+name+"”"+(still?". Ojo: llegó como imagen fija, no como GIF.":""));
+      flash("Imagen guardada para “"+name+"”"+(still?". Ojo: llegó como imagen fija, no como GIF.":""));toast("Imagen guardada para “"+name+"”");
     }catch(e){flash("No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.",true)}
   }
   document.addEventListener("paste",async e=>{
@@ -2076,11 +2112,20 @@ export function startApp(env){
       '<div class="firow">'+(own?'<button type="button" class="catchip'+(isGuess(n)?' guess':'')+'" data-catopen="'+i+'" aria-expanded="'+(catOpen===n)+'" title="Cambiar músculo"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+' ▾</button>':'<span class="catchip ro"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+'</span>')+'<span class="meta">'+esc(meta)+'</span></div>'+
       (catOpen===n&&own?'<div class="catpick" role="group" aria-label="Elegir músculo">'+CATS.map(c=>'<button type="button" data-catset="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cat[0]&&!isGuess(n))+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>':'')+
       trendHTML(n)+
-      (o==="comun"?'<p class="hint">Del banco común: lo ven todos y no se edita.</p>':o==="profe"?'<p class="hint">Lo creó tu profesor: solo él puede cambiarlo.</p>':'')+
+      (o==="comun"&&isAdmin()?adminBankHTML(n,i):o==="comun"?'<p class="hint">Del banco común: lo ven todos y no se edita.</p>':o==="profe"?'<p class="hint">Lo creó tu profesor: solo él puede cambiarlo.</p>':'')+
       '<div class="fiacts"><button type="button" class="btnlike solid" data-log="'+i+'">Agregar a hoy</button>'+
         (own&&assets?'<button type="button" class="btnlike" data-img="'+i+'">'+(r?"Cambiar imagen":"Subir imagen")+'</button>':'')+
         (own&&!r?'<a class="btnlike" href="'+esc(searchURL(n))+'" target="_blank" rel="noopener">Buscar imagen</a>':'')+
-        (own?'<button type="button" class="btnlike danger" data-rm="'+i+'">Quitar</button>':'')+'</div>';
+        (own?'<button type="button" class="btnlike danger" data-rm="'+i+'">Quitar</button>':'')+
+        (own&&isAdmin()?'<button type="button" class="btnlike" data-bkpromote="'+i+'">Pasar al banco común</button>':'')+'</div>';
+  }
+  function adminBankHTML(n,i){
+    const b=bankRowOf(n),cur=b&&b.category||catOf(n);
+    return '<div class="adminbox"><b>Administrar banco común</b>'+
+      '<label class="f"><span>Nombre</span><div class="rowin"><input id="bkName" value="'+esc(b?b.name:n)+'"><button type="button" class="btnlike" data-bkname="'+i+'">Guardar</button></div></label>'+
+      '<div class="catpick" role="group" aria-label="Músculo">'+CATS.map(c=>'<button type="button" data-bkcat="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cur)+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>'+
+      '<div class="fiacts"><button type="button" class="btnlike" data-bkimg="'+i+'">Cambiar video o imagen</button><button type="button" class="btnlike danger" data-bkdel="'+i+'">Quitar del banco</button></div>'+
+      '<p class="hint">Los cambios los ven todos los usuarios.</p></div>';
   }
   $("fichaOv").addEventListener("click",e=>{if(e.target.id==="fichaOv"||e.target.closest("[data-fclose]"))closeFicha()});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&fichaN&&$("lb").hidden)closeFicha()});
@@ -2094,6 +2139,13 @@ export function startApp(env){
   async function exAction(e){
     const t=e.target.closest("button");if(!t)return;
     if(t.dataset.ficha!=null){openFicha(catalog[+t.dataset.ficha]);return}
+    if(isAdmin()){
+      if(t.dataset.bkname!=null){const n=catalog[+t.dataset.bkname],b=bankRowOf(n),v=$("bkName").value.trim().replace(/\s+/g," ");if(!b||!v||v===b.name)return;const prevN=fichaN;fichaN=v;if(await bankSave(b.key,{name:v}))toast("Nombre actualizado");else{fichaN=prevN;renderFicha()}return}
+      if(t.dataset.bkcat){const n=catalog[+t.dataset.ci],b=bankRowOf(n);if(b&&await bankSave(b.key,{category:t.dataset.bkcat}))toast("Músculo actualizado");return}
+      if(t.dataset.bkimg!=null){const b=bankRowOf(catalog[+t.dataset.bkimg]);if(b&&assets){pendingBank=b.key;$("fileIn").click()}return}
+      if(t.dataset.bkdel!=null){const n=catalog[+t.dataset.bkdel];if(!t.classList.contains("arm")){t.classList.add("arm");t.textContent="¿Seguro? Lo dejan de ver todos";return}closeFicha();await bankDelete(n);return}
+      if(t.dataset.bkpromote!=null){const n=catalog[+t.dataset.bkpromote];closeFicha();await bankPromote(n);return}
+    }
     if(t.dataset.catopen!=null){const n=catalog[+t.dataset.catopen];catOpen=catOpen===n?null:n;renderFicha();return}
     if(t.dataset.catset){const n=catalog[+t.dataset.ci],m=Object.assign({},cats);m[imgKey(n)]={c:t.dataset.catset,by:"user"};catOpen=null;await store.setCats(m);return}
     if(t.dataset.view!=null){openLB(catalog[+t.dataset.view]);return}
