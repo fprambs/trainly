@@ -398,3 +398,7 @@ create trigger exercises_skip_bank before insert or update on public.exercises
 -- orden de las series: false = por ejercicio (default), true = circuito por rondas
 alter table public.routines add column if not exists circuit boolean not null default false;
 alter table public.entries add column if not exists circuit boolean not null default false;
+
+-- peso por mancuerna: el ejercicio se anota con el peso de UNA mancuerna (el volumen cuenta las dos).
+-- Default en el banco; cada atleta puede cambiarlo en athletes.rest_cfg.side {key: true/false}
+alter table public.bank_exercises add column if not exists per_side boolean not null default false;
