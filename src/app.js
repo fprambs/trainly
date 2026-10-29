@@ -1058,9 +1058,9 @@ export function startApp(env){
     const day=dayListOf(e),idx=day.indexOf(e),prev=day[idx-1],next=day[idx+1];
     const r=imgOf(e.name),cat=catOf(e.name),ds=doneArr(e),fp=ds.findIndex(x=>!x),lt=lastTimeOf(e);
     const rows=ds.map((d,i)=>{
-      if(d){const V=setVerdict(e,d);return '<li><button type="button" class="srow done st-'+V.state+'" data-dset="'+i+'"><span class="sdot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(d.w!=null&&d.r!=null?fmtN(d.w)+" kg × "+d.r:setLine(e,d))+'</span><span class="stime">'+(d.at?pad(new Date(d.at).getHours())+':'+pad(new Date(d.at).getMinutes()):'')+'</span></button></li>'}
-      if(i===fp)return '<li class="scur"><div class="srow cur"><span class="sdot">'+(i+1)+'</span><span class="slab">Serie '+(i+1)+' <em>· te toca</em></span><span class="sval">'+esc(planText(e)||"")+'</span></div>'+goBtnHTML(e,i,"bigbtn","Completar serie "+(i+1))+'</li>';
-      return '<li><button type="button" class="srow pend" data-dgo="'+i+'"><span class="sdot">'+(i+1)+'</span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(planText(e)||"")+'</span></button></li>';
+      if(d){const V=setVerdict(e,d);return '<li><button type="button" class="srow done st-'+V.state+'" data-dset="'+i+'"><span class="sdot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(d.w!=null&&d.r!=null?fmtN(d.w)+" kg × "+d.r:setLine(e,d))+'</span><span class="stime">'+(d.at?pad(new Date(d.at).getHours())+':'+pad(new Date(d.at).getMinutes()):'')+'</span></button>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</li>'}
+      if(i===fp)return '<li class="scur"><div class="srow cur"><span class="sdot">'+(i+1)+'</span><span class="slab">Serie '+(i+1)+' <em>· te toca</em></span><span class="sval">'+esc(planText(e)||"")+'</span>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</div>'+goBtnHTML(e,i,"bigbtn","Completar serie "+(i+1))+'</li>';
+      return '<li><button type="button" class="srow pend" data-dgo="'+i+'"><span class="sdot">'+(i+1)+'</span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(planText(e)||"")+'</span></button>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</li>';
     }).join("");
     $("exDet").innerHTML='<div class="dwrap">'+
       '<div class="dtop"><button type="button" class="iconbtn" data-dact="close" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><span>Ejercicio '+(idx+1)+' de '+day.length+'</span>'+
@@ -1070,7 +1070,6 @@ export function startApp(env){
       (editEntry===e.id?entryEditHTML(e):'')+
       (ds.length?'<ol class="srows" aria-label="Series">'+rows+'</ol>':'<p class="hint">Este ejercicio no tiene series. Agrega una con “+ Serie”.</p>')+
       '<div class="dacts"><button type="button" class="btnlike" data-dact="addset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Serie</button>'+
-        (ds.length>1&&!ds[ds.length-1]?'<button type="button" class="btnlike" data-dact="rmset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>Serie</button>':'')+
         '<button type="button" class="btnlike edt" data-eid="'+esc(e.id)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Editar plan</button></div>'+
       '<div class="dnav">'+(prev?'<button type="button" class="btnlike" data-dnav="'+esc(prev.id)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span>'+esc(prev.name)+'</span></button>':'<span></span>')+
         (next?'<button type="button" class="btnlike" data-dnav="'+esc(next.id)+'"><span>'+esc(next.name)+'</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>':'<span></span>')+'</div>'+
@@ -1083,6 +1082,13 @@ export function startApp(env){
     if(b.dataset.dnav){DET={id:b.dataset.dnav};editEntry=null;renderDetail();$("exDet").scrollTop=0;return}
     if(b.dataset.dact==="addset"){await store.update(e.id,{sets:(+e.sets||0)+1});return}
     if(b.dataset.dact==="rmset"){const n=Math.max(0,(+e.sets||0)-1);await store.update(e.id,{sets:n,done:doneArr(e).slice(0,n)});return}
+    if(b.dataset.drm!=null){
+      const i=+b.dataset.drm,old={sets:e.sets,done:(Array.isArray(e.done)?e.done:[]).slice()};
+      const ds=doneArr(e);ds.splice(i,1);
+      if(running&&running.id===e.id)running=null;
+      await store.update(e.id,{sets:Math.max(0,(+e.sets||0)-1),done:ds});
+      toast("Serie "+(i+1)+" eliminada",false,{label:"Deshacer",fn:async()=>{await store.update(e.id,old)}});return;
+    }
     if(b.dataset.dset!=null){const i=+b.dataset.dset,d=doneArr(e)[i];if(d)openSetModal(e,i,Object.assign({},d),true);return}
     if(b.dataset.dgo!=null){completeFlow(e.id,+b.dataset.dgo);return}
   });
