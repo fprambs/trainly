@@ -106,7 +106,7 @@ export function startApp(env){
     });
     // el banco común completa lo que falte (y marca el origen)
     bankRows.forEach(b=>{
-      const k=b.key;if(!by[k])by[k]={name:b.name,img:null,cat:null};
+      const k=b.key;if(!by[k])by[k]={name:b.name,img:null,cat:null};else by[k].name=b.name;
       exOrigin[k]="comun";
       if(!by[k].img&&b.image_url)by[k].img={id:"bank:"+k,url:b.image_url,type:b.image_type||"image/png"};
       if(!by[k].cat&&b.category)by[k].cat={c:b.category,by:"bank"};
@@ -126,7 +126,8 @@ export function startApp(env){
   }
   const ownExRow=key=>exRows.find(x=>x.owner_id===me&&x.key===key);
   function putOwnEx(key,patch){
-    const name=catalog.find(n=>imgKey(n)===key)||patch.name||key;
+    const bk=bankRows.find(b=>b.key===key);
+    const name=patch.name||catalog.find(n=>imgKey(n)===key)||(bk&&bk.name)||(entries.find(e=>imgKey(e.name)===key)||{}).name||key;
     let row=ownExRow(key);
     if(row)Object.assign(row,patch);else{row=Object.assign({id:uuid(),owner_id:me,key,name,created_at:new Date().toISOString()},patch);exRows.push(row)}
     bg({t:"ups",table:"exercises",onConflict:"owner_id,key",row:{owner_id:me,key,name:row.name,image_url:row.image_url??null,image_type:row.image_type??null,image_path:row.image_path??null,category:row.category??null,category_by:row.category_by??null}});
@@ -144,8 +145,8 @@ export function startApp(env){
         else if(!own)toast("“"+n+"” es del catálogo de tu profesor: solo él puede quitarlo.")}});
       deriveCatalog();render();
     },
-    setImages:async map=>{Object.keys(map).forEach(k=>{const v=map[k],cur=images[k];if(!cur||cur.url!==v.url)putOwnEx(k,{image_url:v.url,image_type:v.type,image_path:v.id})});deriveCatalog();render()},
-    setCats:async map=>{Object.keys(map).forEach(k=>{const v=map[k],c=typeof v==="string"?{c:v,by:"user"}:v,cur=cats[k];if(!cur||cur.c!==c.c||cur.by!==c.by)putOwnEx(k,{category:c.c,category_by:c.by})});deriveCatalog();render()},
+    setImages:async map=>{Object.keys(map).forEach(k=>{if(bankRows.some(b=>b.key===k))return;const v=map[k],cur=images[k];if(!cur||cur.url!==v.url)putOwnEx(k,{image_url:v.url,image_type:v.type,image_path:v.id})});deriveCatalog();render()},
+    setCats:async map=>{Object.keys(map).forEach(k=>{if(bankRows.some(b=>b.key===k))return;const v=map[k],c=typeof v==="string"?{c:v,by:"user"}:v,cur=cats[k];if(!cur||cur.c!==c.c||cur.by!==c.by)putOwnEx(k,{category:c.c,category_by:c.by})});deriveCatalog();render()},
     setRoutines:async list=>{
       const prev=new Map(routines.map(r=>[r.id,r]));
       list.forEach(r=>{
