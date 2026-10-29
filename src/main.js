@@ -72,7 +72,8 @@ $("authForm").addEventListener("submit", async ev => {
   } catch (e) { authMsg(niceAuthError(e)); }
   btn.disabled = false;
 });
-$("aShow").onclick = () => { const i = $("aPass"), show = i.type === "password"; i.type = show ? "text" : "password"; $("aShow").textContent = show ? "Ocultar" : "Ver"; };
+const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>', EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10.4 10.4 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+$("aShow").onclick = () => { const i = $("aPass"), b = $("aShow"), show = i.type === "password"; i.type = show ? "text" : "password"; b.innerHTML = show ? EYE_OFF : EYE; b.setAttribute("aria-label", show ? "Ocultar contraseña" : "Mostrar contraseña"); };
 $("aForgot").onclick = async () => {
   const email = $("aEmail").value.trim().toLowerCase();
   if (!email) { authMsg("Escribe tu email arriba y vuelve a tocar aquí."); $("aEmail").focus(); return; }
