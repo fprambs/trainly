@@ -1627,11 +1627,18 @@ export function startApp(env){
   const planOf=e=>({name:e.name,sets:e.sets??null,reps:e.reps??null,weight:e.weight??null,mins:e.mins??null,dist:e.dist??null});
   // ---------- pestaña Rutinas ----------
   let rutEdit=null;
-  const openRuts=new Set();
+  const openRuts=new Set();let rutPick=null;
+  // elegir fecha para cargar la rutina: próximos días con un toque, o cualquier fecha
+  function rutPickHTML(id){
+    let chips="";
+    for(let k=1;k<=7;k++){const d=new Date(parse(today));d.setDate(d.getDate()+k);const ds=iso(d),has=entries.some(e=>e.date===ds);
+      chips+='<button type="button" data-rtload="'+esc(id)+'" data-rd="'+ds+'"'+(has?' class="has"':'')+'><small>'+d.toLocaleDateString("es-CL",{weekday:"short"}).replace(".","")+'</small><b>'+d.getDate()+'</b></button>'}
+    return '<div class="rutpick"><div class="rpchips">'+chips+'</div><label class="rpother">Otra: <input type="date" data-rtdate="'+esc(id)+'" min="'+iso(new Date(parse(today).getFullYear()-1,0,1))+'"></label><p class="hint">Los días con punto ya tienen ejercicios: se suman a lo que hay.</p></div>';
+  }
   function renderRoutinesTab(){
     const box=$("rutList"),d=$("date").value||today;
     const tgt=d===today?"hoy":parse(d).toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
-    $("rutTarget").textContent=routines.length?"Toca “Cargar” para agregar sus ejercicios a la sesión de "+(d===today?"hoy":fmtDay(d))+".":"";
+    $("rutTarget").textContent=routines.length?"Abre una rutina y cárgala hoy o en la fecha que quieras.":"";void d;
     if(!routines.length){
       box.innerHTML='<div class="empty rutempty">'+SAVEIC+'<p><b>Aún no tienes rutinas guardadas.</b></p><p>Guarda un día de entrenamiento para repetirlo con un toque. Puedes hacerlo desde <b>Historial</b> (abre un día y toca “Guardar este día como rutina”) o desde la sesión con el botón <b>Rutinas</b>.</p></div>';return;
     }
@@ -1649,7 +1656,7 @@ export function startApp(env){
         '<button type="button" class="'+(ed?'btnlike solid':'iconbtn hed')+'" data-redit="'+esc(r.id)+'" aria-label="'+(ed?'Terminar de editar':'Editar rutina')+'">'+(ed?"Listo":PENCIL)+'</button></div>'+
         '<div class="rutexs">'+rows+'</div>'+
         (ed?'<div class="rutfoot"><button type="button" class="dangerbtn" data-rtdel="'+esc(r.id)+'">'+TRASH+' Borrar rutina</button></div>':
-          '<button type="button" class="primary rutload" data-rtload="'+esc(r.id)+'">Cargar en '+esc(tgt)+'</button>')+
+          '<div class="rutloads"><button type="button" class="primary rutload" data-rtload="'+esc(r.id)+'" data-rd="'+today+'">Cargar hoy</button><button type="button" class="btnlike" data-rtpick="'+esc(r.id)+'" aria-expanded="'+(rutPick===r.id)+'">Otra fecha ▾</button></div>'+(rutPick===r.id?rutPickHTML(r.id):''))+
         '</div></details>';
     }).join("");
   }
@@ -1665,8 +1672,15 @@ export function startApp(env){
     if(b.dataset.rxdel!=null){const i=find(b.dataset.rid);if(i<0)return;const l=routines.slice(),r=Object.assign({},l[i]);r.items=r.items.filter((_,k)=>k!==+b.dataset.rxdel);l[i]=r;await store.setRoutines(l);return}
     if(b.dataset.rtdel){const i=find(b.dataset.rtdel);if(i<0)return;const r=routines[i];rutEdit=null;await store.setRoutines(routines.filter((_,k)=>k!==i));
       toast("Rutina borrada: "+r.name,false,{label:"Deshacer",fn:async()=>{await store.setRoutines(routines.concat([r]))}});return}
-    if(b.dataset.rtload){const r=routines[find(b.dataset.rtload)];if(!r)return;b.disabled=true;await addPlans(r.items,"“"+r.name+"”");showTab("anotar");renderToday()}
+    if(b.dataset.rtpick){rutPick=rutPick===b.dataset.rtpick?null:b.dataset.rtpick;renderRoutinesTab();return}
+    if(b.dataset.rtload){const r=routines[find(b.dataset.rtload)];if(!r)return;b.disabled=true;await loadRutOn(r,b.dataset.rd||today)}
   });
+  async function loadRutOn(r,d){
+    rutPick=null;
+    await addPlans(r.items,"“"+r.name+"”"+(d===today?"":" para el "+fmtDay(d)),d);
+    showTab("anotar");goDay(d);
+  }
+  $("rutList").addEventListener("change",e=>{const id=e.target.dataset&&e.target.dataset.rtdate;if(!id||!e.target.value)return;const r=routines.find(x=>x.id===id);if(r)loadRutOn(r,e.target.value)});
   $("rutList").addEventListener("toggle",e=>{const d=e.target.closest&&e.target.closest(".rutday");if(!d)return;d.open?openRuts.add(d.dataset.rut):openRuts.delete(d.dataset.rut)},true);
   $("rutList").addEventListener("keydown",e=>{if(e.target.dataset&&e.target.dataset.rname&&e.key==="Enter"){e.preventDefault();const b=document.querySelector('[data-redit="'+e.target.dataset.rname+'"]');if(b)b.click()}});
 
@@ -1692,8 +1706,8 @@ export function startApp(env){
   function nextRoutineName(){let n=routines.length+1;while(routines.some(r=>norm(r.name)===norm("Día "+n)))n++;return "Día "+n}
   function openSaveFor(src){saveSrc=src;renderLoadBox();$("repeatBox").hidden=false;$("rName").value=nextRoutineName();setTimeout(()=>{$("rName").focus();$("rName").select();$("rSave").scrollIntoView({block:"center",behavior:"smooth"})},30)}
   $("repeatBtn").addEventListener("click",()=>{const box=$("repeatBox");if(!box.hidden){box.hidden=true;saveSrc=null;return}saveSrc=null;renderLoadBox();box.hidden=false});
-  async function addPlans(items,label){
-    const d=$("date").value||today;let n=0;const base=Date.now();
+  async function addPlans(items,label,date){
+    const d=date||$("date").value||today;let n=0;const base=Date.now();
     try{for(const it of items){await store.add(Object.assign(planOf(it),{date:d,memo:"",createdAt:base+n}));n++}
       $("repeatBox").hidden=true;toast((n===1?"Cargado 1 ejercicio":"Cargados "+n+" ejercicios")+" de "+label);}
     catch(err){toast("Se cargaron "+n+" de "+items.length+". Inténtalo de nuevo para el resto.")}

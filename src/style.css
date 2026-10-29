@@ -950,3 +950,15 @@ body.kb .tabs .rest{margin-bottom:6px}
 .rutbody .rutload{margin-top:2px}
 .hed svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .rutbody .hbar{border-bottom:0;padding-bottom:0}
+.rutloads{display:flex;gap:8px;align-items:stretch}
+.rutloads .rutload{flex:1;margin:0}
+.rutloads .btnlike{flex:none;white-space:nowrap;min-height:52px;padding:0 14px}
+.rutpick{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:14px;background:var(--surface2)}
+.rpchips{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.rpchips button{position:relative;display:flex;flex-direction:column;align-items:center;gap:0;padding:6px 0;min-height:52px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);cursor:pointer}
+.rpchips small{font-size:.66rem;text-transform:capitalize;color:var(--muted);font-weight:600}
+.rpchips b{font-size:1.1rem}
+.rpchips button.has::after{content:"";position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.rpother{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:600;color:var(--muted)}
+.rpother input{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--line);padding:0 10px;background:var(--surface);color:var(--ink);font-size:16px}
+.rutpick .hint{margin:0;font-size:.78rem}
