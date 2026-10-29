@@ -249,7 +249,7 @@ export function startApp(env){
     if(en.error)throw en.error;
     entries=applyPending((en.data||[]).map(toEntry));
     exRows=ex.data||[];rutRows=ru.data||[];athCoaches=(co.data||[]).map(x=>x.coach_id);bankRows=(bk&&bk.data)||bankRows;
-    const rc=ath.rest_cfg;restCfg=rc&&rc.by?{def:+rc.def||90,by:Object.assign({},rc.by)}:{def:90,by:{}};
+    const rc=ath.rest_cfg;restCfg=rc&&rc.by?{def:+rc.def||90,by:Object.assign({},rc.by),side:Object.assign({},rc.side||{})}:{def:90,by:{},side:Object.assign({},(rc&&rc.side)||{})};
     deriveCatalog();deriveRoutines();
     catLoaded=entLoaded=true;
   }
@@ -562,7 +562,7 @@ export function startApp(env){
     if(e.sets&&e.reps)p.push(e.sets+"×"+e.reps);
     else if(e.sets)p.push(e.sets+(e.sets==1?" serie":" series"));
     else if(e.reps)p.push(e.reps+" reps");
-    if(e.weight!=null)p.push("<em>"+fmtN(e.weight)+" kg</em>");
+    if(e.weight!=null)p.push("<em>"+fmtN(e.weight)+KG(e)+"</em>");
     if(e.dist!=null)p.push(fmtDist(e.dist));
     if(e.mins!=null)p.push(fmtTime(e.mins));
     return p.join(" · ")||"—";
@@ -706,7 +706,11 @@ export function startApp(env){
   const fmtTime=min=>{const s=Math.round(min*60);return s<60?s+" s":Math.floor(s/60)+":"+pad(s%60)+" min"};
   const fmtDist=m=>m>=1000?fmtN(m/1000)+" km":fmtN(m)+" m";
   const isTimed=e=>e.mins!=null||e.dist!=null;
-  const planText=e=>[e.weight!=null?e.weight+" kg":"",e.reps!=null?e.reps+" reps":"",e.dist!=null?fmtDist(e.dist):"",e.mins!=null?fmtTime(e.mins):""].filter(Boolean).join(" · ");
+  // ejercicios con mancuernas "por lado": se anota el peso de UNA mancuerna; el volumen cuenta las dos
+  const perSide=n=>{const k=imgKey(n||"");const o=restCfg.side&&restCfg.side[k];if(o!=null)return !!o;const b=bankRows.find(x=>x.key===k);return !!(b&&b.per_side)};
+  const SF=e=>e&&perSide(e.name)?2:1;
+  const KG=e=>e&&perSide(e.name)?" kg c/u":" kg";
+  const planText=e=>[e.weight!=null?String(e.weight).replace(".",",")+KG(e):"",e.reps!=null?e.reps+" reps":"",e.dist!=null?fmtDist(e.dist):"",e.mins!=null?fmtTime(e.mins):""].filter(Boolean).join(" · ");
   function getMins(){const a=$("tMin").value,b=$("tSec").value;if(a===""&&b==="")return null;return ((+a||0)*60+(+b||0))/60}
   function setMins(v){if(v==null){$("tMin").value="";$("tSec").value="";return}const s=Math.round(v*60);$("tMin").value=Math.floor(s/60);$("tSec").value=s%60}
   function parseTime(v){v=(v||"").trim();if(!v)return null;if(v.includes(":")){const [m,s]=v.split(":");return ((+m||0)*60+(+s||0))/60}const n=Number(v.replace(",","."));return isNaN(n)?null:n}
@@ -714,7 +718,7 @@ export function startApp(env){
   function valOf(e,key){
     const dd=(Array.isArray(e.done)?e.done:[]).filter(Boolean);
     if(key==="orm"){const v=dd.filter(d=>d.w!=null&&d.r!=null).map(d=>e1rm(d.w,d.r)).filter(x=>x!=null);return v.length?Math.max(...v):(e.weight!=null&&e.reps!=null?e1rm(e.weight,e.reps):null)}
-    if(key==="vol"){const v=dd.filter(d=>d.w!=null&&d.r!=null);return v.length?v.reduce((a,d)=>a+d.w*d.r,0):(e.weight&&e.reps&&e.sets?e.weight*e.reps*e.sets:null)}
+    if(key==="vol"){const v=dd.filter(d=>d.w!=null&&d.r!=null);return v.length?v.reduce((a,d)=>a+d.w*d.r*SF(e),0):(e.weight&&e.reps&&e.sets?e.weight*e.reps*e.sets*SF(e):null)}
     if(key==="best"){const ts=(Array.isArray(e.done)?e.done:[]).filter(d=>d&&d.t!=null).map(d=>d.t);return ts.length?Math.min(...ts):null}
     const k={weight:"w",reps:"r",mins:"t",dist:"m"}[key];
     const vs=(Array.isArray(e.done)?e.done:[]).filter(Boolean).map(d=>d[k]).filter(v=>v!=null);
@@ -742,7 +746,7 @@ export function startApp(env){
   function setParts(e,d){
     const dir=(ref,val,lower)=>!ref||val==null||ref.v===val?0:((lower?val<ref.v:val>ref.v)?1:-1);
     const P=[];
-    if(d.w!=null)P.push({k:"w",txt:fmtN(d.w)+"kg",ref:refFor(e,d,"w"),dir:dir(refFor(e,d,"w"),d.w)});
+    if(d.w!=null)P.push({k:"w",txt:fmtN(d.w)+(perSide(e.name)?"kg c/u":"kg"),ref:refFor(e,d,"w"),dir:dir(refFor(e,d,"w"),d.w)});
     if(d.r!=null)P.push({k:"r",txt:(d.w!=null?"×":"")+d.r+(d.w!=null?"":" reps"),ref:refFor(e,d,"r"),dir:dir(refFor(e,d,"r"),d.r)});
     if(d.m!=null)P.push({k:"m",txt:fmtDist(d.m).replace(" ",""),ref:refFor(e,d,"m"),dir:dir(refFor(e,d,"m"),d.m)});
     if(d.t!=null){
@@ -791,7 +795,7 @@ export function startApp(env){
     const NAME={w:"Peso",r:"Reps",m:"Distancia",t:"Tiempo"};
     return V.P.map(p=>{
       const val=p.k==="w"?fmtN(d.w):p.k==="r"?String(d.r):p.k==="m"?fmtDist(d.m).split(" ")[0]:fmtDur(d.t);
-      const unit=p.k==="w"?"kg":p.k==="r"?"reps":p.k==="m"?fmtDist(d.m).split(" ")[1]:"";
+      const unit=p.k==="w"?(perSide(e.name)?"kg c/u":"kg"):p.k==="r"?"reps":p.k==="m"?fmtDist(d.m).split(" ")[1]:"";
       const against=V.byOrm&&p.dir&&(V.state==="same"||(V.state==="up"&&p.dir<0)||(V.state==="down"&&p.dir>0));
       const cls=against?" nt":p.dir>0?" up":p.dir<0?" dn":"";
       const refTxt=p.ref?fmtRef(p.k,p.ref.v):"";
@@ -840,7 +844,7 @@ export function startApp(env){
     const d=editing.draft,i=editing.i;
     const showW=e.weight!=null||d.w!=null,showR=e.reps!=null||d.r!=null,showT=e.mins!=null||d.t!=null||e.dist!=null,showM=e.dist!=null||d.m!=null||editing.addM;
     let f="";
-    if(showW||(!showR&&!showT&&!showM))f+=stepper("w","kg",d.w,1)+QUICKW;
+    if(showW||(!showR&&!showT&&!showM))f+=stepper("w",perSide(e.name)?"kg c/u":"kg",d.w,1)+QUICKW;
     if(showR)f+=stepper("r","reps",d.r,1);
     if(showM)f+=stepper("m","m",d.m,50);
     if(showT){const ts=d.t==null?null:Math.round(d.t*60);
@@ -997,7 +1001,7 @@ export function startApp(env){
     if(b.dataset.preset){
       const s=+b.dataset.preset,by=Object.assign({},restCfg.by);by[rest.key]=s;
       const name=rest.name;
-      try{await store.setSettings({def:restCfg.def||90,by})}catch(err){}
+      try{await store.setSettings(Object.assign({},restCfg,{def:restCfg.def||90,by}))}catch(err){}
       const now=Date.now(),elapsed=rest.total-(rest.end-now)/1000;
       rest.total=s;rest.end=now+(s-elapsed)*1000;rest.beeped=rest.end<=now;
       $("rPre").hidden=true;$("rTimeBtn").setAttribute("aria-expanded","false");
@@ -1179,7 +1183,7 @@ export function startApp(env){
     const day=dayListOf(e),idx=day.indexOf(e),prev=day[idx-1],next=day[idx+1];
     const r=imgOf(e.name),cat=catOf(e.name),ds=doneArr(e),fp=ds.findIndex(x=>!x),lt=lastTimeOf(e);
     const rows=ds.map((d,i)=>{
-      if(d){const V=setVerdict(e,d);return '<li><button type="button" class="srow done st-'+V.state+'" data-dset="'+i+'"><span class="sdot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(d.w!=null&&d.r!=null?fmtN(d.w)+" kg × "+d.r:setLine(e,d))+'</span><span class="stime">'+(d.at?pad(new Date(d.at).getHours())+':'+pad(new Date(d.at).getMinutes()):'')+'</span></button>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</li>'}
+      if(d){const V=setVerdict(e,d);return '<li><button type="button" class="srow done st-'+V.state+'" data-dset="'+i+'"><span class="sdot"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(d.w!=null&&d.r!=null?fmtN(d.w)+KG(e)+" × "+d.r:setLine(e,d))+'</span><span class="stime">'+(d.at?pad(new Date(d.at).getHours())+':'+pad(new Date(d.at).getMinutes()):'')+'</span></button>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</li>'}
       if(i===fp)return '<li class="scur"><div class="srow cur"><span class="sdot">'+(i+1)+'</span><span class="slab">Serie '+(i+1)+' <em>· te toca</em></span><span class="sval">'+esc(planText(e)||"")+'</span>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</div>'+goBtnHTML(e,i,"bigbtn","Completar serie "+(i+1))+'</li>';
       return '<li><button type="button" class="srow pend" data-dgo="'+i+'"><span class="sdot">'+(i+1)+'</span><span class="slab">Serie '+(i+1)+'</span><span class="sval">'+esc(planText(e)||"")+'</span></button>'+'<button type="button" class="srm" data-drm="'+i+'" aria-label="Eliminar serie '+(i+1)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>'+'</li>';
     }).join("");
@@ -1248,7 +1252,7 @@ export function startApp(env){
     const e=entries.find(x=>x.id===SM.id);if(!e){closeSetModal();return}
     const D=SM.draft,F=smFields(e,D),r=imgOf(e.name),t=doneArr(e).length;
     let f="";
-    if(F.w)f+=smStep("w","Peso","kg",D.w,1);
+    if(F.w)f+=smStep("w",perSide(e.name)?"Peso por mancuerna":"Peso",perSide(e.name)?"kg c/u":"kg",D.w,1);
     if(F.r)f+=smStep("r","Repeticiones","",D.r,1);
     if(F.m)f+=smStep("m","Distancia","m",D.m,50);
     if(F.t){const ts=D.t==null?null:Math.round(D.t*60);
@@ -1338,7 +1342,7 @@ export function startApp(env){
         (nx?'<div class="fnext">'+(imgOf(nx.e.name)?mediaHTML(imgOf(nx.e.name),"mini",nx.e.name):'')+'<div><small>Siguiente</small><b>'+esc(nx.e.name)+'</b><span class="hint">Serie '+(nx.r+1)+' de '+doneArr(nx.e).length+(planText(nx.e)?' · '+esc(planText(nx.e)):'')+'</span></div></div>':'')+'</div>';
     }else if(!nx){
       view="end";
-      let vol=0;withSets.forEach(e=>doneArr(e).forEach(x=>{if(x&&x.w!=null&&x.r!=null)vol+=x.w*x.r}));
+      let vol=0;withSets.forEach(e=>doneArr(e).forEach(x=>{if(x&&x.w!=null&&x.r!=null)vol+=x.w*x.r*SF(e)}));
       body='<div class="fend arrive">'+ringSVG(C.d,C.t,170,12,'<span style="font-size:2.6rem">✓</span>')+'<h2>¡Sesión completa!</h2><p>'+C.d+' series'+(st?' · '+fmtClock(Date.now()-st):'')+(vol?' · '+Math.round(vol).toLocaleString("es-CL")+' kg de volumen':'')+'</p>'+
         '<button type="button" class="btnlike solid" data-fa="summary">Ver resumen</button><button type="button" class="fskip" data-fa="close">Salir</button></div>';
     }else{
@@ -1437,8 +1441,8 @@ export function startApp(env){
     let vol=0;
     wk.forEach(e=>{
       const ds=(Array.isArray(e.done)?e.done:[]).filter(Boolean);
-      if(ds.length)ds.forEach(d=>{if(d.w!=null&&d.r!=null)vol+=d.w*d.r});
-      else if(e.sets&&e.reps&&e.weight)vol+=e.sets*e.reps*e.weight;
+      if(ds.length)ds.forEach(d=>{if(d.w!=null&&d.r!=null)vol+=d.w*d.r*SF(e)});
+      else if(e.sets&&e.reps&&e.weight)vol+=e.sets*e.reps*e.weight*SF(e);
     });
     $("sVol").textContent=Math.round(vol).toLocaleString("es-CL");
     const prs=wk.filter(e=>recIds.has(e.id)).length;$("sPrL").textContent=prs===1?"récord":"récords";
@@ -1501,7 +1505,7 @@ export function startApp(env){
     renderNext(cur);
     const others=[...new Set(entries.map(e=>e.date))].filter(x=>x!==d);
     const canLoad=others.length||routines.length||list.length;
-    $("repeatBtn").hidden=!canLoad;
+    $("repeatBtn").hidden=!canLoad||!list.length; // con el día vacío ya está "Cargar rutina"
     if(!canLoad)$("repeatBox").hidden=true;
     $("todayList").hidden=!list.length;$("emptyDay").hidden=!!list.length;
     $("sumBtn").hidden=!list.length;
@@ -1509,7 +1513,7 @@ export function startApp(env){
     const nx=findNext(cur);
     $("todayList").innerHTML=list.length?cardsHTML(groups,nx):"";
   }
-  $("backToday").addEventListener("click",()=>goDay(today));
+  $("dayToday").addEventListener("click",()=>goDay(today));
   // ---------- navegación de días ----------
   const addDays=(s,n)=>{const x=parse(s);x.setDate(x.getDate()+n);return iso(x)};
   function goDay(d){$("date").value=d;$("repeatBox").hidden=true;editEntry=null;editing=null;renderToday();window.scrollTo(0,0)}
@@ -1594,8 +1598,9 @@ export function startApp(env){
     const kind=diff===0?"istoday":diff<0?"past":"future";
     $("dayNav").className="daynav "+kind;
     $("dayMain").textContent=main;
-    $("daySub").textContent=parse(d).toLocaleDateString("es-CL",{weekday:diff>=-1&&diff<=1?"long":undefined,day:"numeric",month:"long",year:parse(d).getFullYear()!==new Date().getFullYear()?"numeric":undefined});
-    const st=$("dayState");st.hidden=diff===0;st.className="daystate "+(diff<0?"past":"future");
+    $("daySub").textContent=parse(d).toLocaleDateString("es-CL",{weekday:diff===0?"long":undefined,day:"numeric",month:"long",year:parse(d).getFullYear()!==new Date().getFullYear()?"numeric":undefined});
+    $("dayToday").hidden=diff===0;
+    const st=$("dayState");st.hidden=diff<=0;st.className="daystate future";
     $("dayStateTxt").textContent=diff<0?"":"Planificando un día futuro";
     const short=parse(d).toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
     $("submitBtn").textContent=diff===0?"Agregar a hoy":"Agregar al "+short;
@@ -1614,7 +1619,7 @@ export function startApp(env){
     return {groups,gi,g:groups[gi]};
   }
   function setLine(e,d){
-    if(d.w!=null&&d.r!=null)return fmtN(d.w)+"×"+d.r;
+    if(d.w!=null&&d.r!=null)return fmtN(d.w)+(perSide(e.name)?" c/u":"")+"×"+d.r;
     const P=setParts(e,d);return P.map(p=>p.txt.replace(/^×/,"")).join(" ");
   }
   function renderSummary(){
@@ -1625,7 +1630,7 @@ export function startApp(env){
     const live=isT&&g.start&&g.end&&Date.now()-g.end<GAP;
     const durMs=g.start?((live?Date.now():g.end)-g.start):null;
     let done=0,total=0,vol=0;
-    g.entries.forEach(e=>{const ds=doneArr(e);total+=ds.length;ds.forEach(x=>{if(x){done++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r}})});
+    g.entries.forEach(e=>{const ds=doneArr(e);total+=ds.length;ds.forEach(x=>{if(x){done++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r*SF(e)}})});
     const prs=g.entries.filter(e=>recIds.has(e.id)).length;
     const startTxt=g.start?new Date(g.start).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",hour12:false}):"";
     const rows=g.entries.map(e=>{
@@ -1654,7 +1659,7 @@ export function startApp(env){
     const live=isT&&g.start&&g.end&&Date.now()-g.end<GAP,durMs=g.start?((live?Date.now():g.end)-g.start):null;
     const startTxt=g.start?new Date(g.start).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",hour12:false}):"";
     let done=0,total=0,vol=0;
-    g.entries.forEach(e=>{const ds=doneArr(e);total+=ds.length;ds.forEach(x=>{if(x){done++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r}})});
+    g.entries.forEach(e=>{const ds=doneArr(e);total+=ds.length;ds.forEach(x=>{if(x){done++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r*SF(e)}})});
     Object.assign(out,{live,dur:durMs!=null?fmtClock(durMs):"—",durLabel:live?"En curso · desde "+startTxt:durMs!=null?"Duración · desde "+startTxt:"Sin series marcadas",
       nEx:g.entries.length,done,total,vol:Math.round(vol),prs:g.entries.filter(e=>recIds.has(e.id)).length});
     out.rows=g.entries.map(e=>{
@@ -1961,13 +1966,13 @@ export function startApp(env){
   function compactSet(e,d){
     const st=setVerdict(e,d).state;
     let t;
-    if(d.w!=null&&d.r!=null)t=fmtN(d.w)+"×"+d.r;
-    else{const p=[];if(d.r!=null)p.push(d.r+" reps");if(d.w!=null)p.push(fmtN(d.w)+" kg");if(d.m!=null)p.push(fmtDist(d.m));if(d.t!=null)p.push(fmtDur(d.t));t=p.join(" · ")||"✓"}
+    if(d.w!=null&&d.r!=null)t=fmtN(d.w)+(perSide(e.name)?" c/u":"")+"×"+d.r;
+    else{const p=[];if(d.r!=null)p.push(d.r+" reps");if(d.w!=null)p.push(fmtN(d.w)+KG(e));if(d.m!=null)p.push(fmtDist(d.m));if(d.t!=null)p.push(fmtDur(d.t));t=p.join(" · ")||"✓"}
     return '<span class="hs '+st+'">'+esc(t)+(st==="up"?"↑":st==="down"?"↓":"")+'</span>';
   }
   function dayCompactHTML(d,l){
     let sets=0,vol=0;
-    l.forEach(e=>doneArr(e).forEach(x=>{if(x){sets++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r}}));
+    l.forEach(e=>doneArr(e).forEach(x=>{if(x){sets++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r*SF(e)}}));
     const rows=l.map(e=>{
       const r=imgOf(e.name),ds=doneArr(e),done=ds.filter(Boolean);
       const body=done.length?done.map(x=>compactSet(e,x)).join("")+(done.length<ds.length?'<span class="hs miss">'+(ds.length-done.length)+' sin hacer</span>':''):'<span class="hs plan">'+esc((e.sets?e.sets+"× ":"")+(planText(e)||"sin datos"))+(d<=today&&ds.length?' · sin marcar':'')+'</span>';
@@ -2252,12 +2257,13 @@ export function startApp(env){
     const n=fichaN,o=segOf(n),own=o==="mio",cat=CATMAP[catOf(n)],r=imgOf(n);
     const rows=entries.filter(e=>norm(e.name)===norm(n));
     const last=rows.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt)[0];
-    const meta=rows.length?(rows.length+(rows.length===1?" vez":" veces")+" · último "+fmtShort(last.date)+(valOf(last,"weight")!=null?" · "+fmtN(valOf(last,"weight"))+" kg":"")):"Sin registros aún";
+    const meta=rows.length?(rows.length+(rows.length===1?" vez":" veces")+" · último "+fmtShort(last.date)+(valOf(last,"weight")!=null?" · "+fmtN(valOf(last,"weight"))+KG(last):"")):"Sin registros aún";
     $("ficha").innerHTML='<div class="grab" aria-hidden="true"></div>'+
       '<div class="fihead"><h2 id="fichaName">'+esc(n)+'</h2>'+originTag(n)+'<button type="button" class="iconbtn" data-fclose aria-label="Cerrar">✕</button></div>'+
       (BK&&BK.preview&&bankRowOf(n)&&bankRowOf(n).key===BK.key?'<div class="fimedia preview">'+mediaBig({url:BK.preview,type:BK.ptype})+'<span class="pvtag">Vista previa · sin guardar</span></div>':'<button type="button" class="fimedia'+(r?'':' noimg')+'" data-view="'+i+'" aria-label="Ver '+esc(n)+' en grande"'+(r?'':' disabled')+'>'+(r?mediaBig(r):'Sin imagen')+'</button>')+
       '<div class="firow">'+(own?'<button type="button" class="catchip'+(isGuess(n)?' guess':'')+'" data-catopen="'+i+'" aria-expanded="'+(catOpen===n)+'" title="Cambiar músculo"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+' ▾</button>':'<span class="catchip ro"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+'</span>')+'<span class="meta">'+esc(meta)+'</span></div>'+
       (catOpen===n&&own?'<div class="catpick" role="group" aria-label="Elegir músculo">'+CATS.map(c=>'<button type="button" data-catset="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cat[0]&&!isGuess(n))+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>':'')+
+      '<button type="button" class="sidetog" role="switch" aria-checked="'+perSide(n)+'" data-side="'+i+'"><span><b>Peso por mancuerna</b><small>'+(perSide(n)?'Anotas lo que pesa cada mancuerna (ej. 5 kg c/u). El volumen cuenta las dos.':'Actívalo si lo haces con dos mancuernas y quieres anotar el peso de una.')+'</small></span><i aria-hidden="true"></i></button>'+
       trendHTML(n)+
       (o==="comun"&&isAdmin()?adminBankHTML(n,i):o==="comun"?'<p class="hint">Del banco común: lo ven todos y no se edita.</p>':o==="profe"?'<p class="hint">Lo creó tu profesor: solo él puede cambiarlo.</p>':'')+
       '<div class="fiacts"><button type="button" class="btnlike solid" data-log="'+i+'">Agregar a hoy</button>'+
@@ -2268,8 +2274,8 @@ export function startApp(env){
   }
   // borrador de cambios del banco: se aplican todos juntos con "Guardar cambios"
   let BK=null; // {key,name,cat,file,preview,ptype}
-  function bkDraft(n){const b=bankRowOf(n);if(!b)return null;if(!BK||BK.key!==b.key)BK={key:b.key,name:b.name,cat:b.category||catOf(n),file:null,preview:null};return BK}
-  function bkDirty(){if(!BK)return false;const b=bankRows.find(x=>x.key===BK.key);if(!b)return false;return BK.name.trim()!==b.name||BK.cat!==(b.category||"")||!!BK.file}
+  function bkDraft(n){const b=bankRowOf(n);if(!b)return null;if(!BK||BK.key!==b.key)BK={key:b.key,name:b.name,cat:b.category||catOf(n),side:!!b.per_side,file:null,preview:null};return BK}
+  function bkDirty(){if(!BK)return false;const b=bankRows.find(x=>x.key===BK.key);if(!b)return false;return BK.name.trim()!==b.name||BK.cat!==(b.category||"")||BK.side!==!!b.per_side||!!BK.file}
   function bkReset(){if(BK&&BK.preview)URL.revokeObjectURL(BK.preview);BK=null}
   let discardArm=0;
   function confirmDiscard(){if(Date.now()-discardArm<4000)return true;discardArm=Date.now();toast("Tienes cambios sin guardar. Cierra otra vez para descartarlos.");return false}
@@ -2278,6 +2284,7 @@ export function startApp(env){
     return '<div class="adminbox"><b>Administrar banco común</b>'+
       '<label class="f"><span>Nombre</span><input id="bkName" value="'+esc(d.name)+'" enterkeyhint="done" autocomplete="off"></label>'+
       '<div class="catpick" role="group" aria-label="Músculo">'+CATS.map(c=>'<button type="button" data-bkcat="'+c[0]+'" aria-pressed="'+(c[0]===d.cat)+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>'+
+      '<label class="bkside"><input type="checkbox" id="bkSide"'+(d.side?' checked':'')+'> Peso por mancuerna por defecto (para todos)</label>'+
       '<div class="fiacts"><button type="button" class="btnlike" data-bkimg="1">'+(d.file?'Elegir otro video':'Cambiar video o imagen')+'</button><button type="button" class="btnlike danger" data-bkdel="'+i+'">Quitar del banco</button></div>'+
       (d.file?'<p class="hint">Nuevo: '+esc(d.file.name||"archivo")+' ('+(d.file.size/1048576).toFixed(1).replace(".",",")+' MB). Se sube al guardar.</p>':'')+
       '<div class="bksave"><button type="button" class="btnlike" data-bkundo="1"'+(bkDirty()?'':' disabled')+'>Descartar</button><button type="button" class="btnlike solid" id="bkSave" data-bksave="1"'+(bkDirty()?'':' disabled')+'>Guardar cambios</button></div>'+
@@ -2285,6 +2292,7 @@ export function startApp(env){
   }
   function bkSync(){const on=bkDirty();document.querySelectorAll("[data-bksave],[data-bkundo]").forEach(x=>x.disabled=!on)}
   $("ficha").addEventListener("input",e=>{if(e.target.id==="bkName"&&BK){BK.name=e.target.value;bkSync()}});
+  $("ficha").addEventListener("change",e=>{if(e.target.id==="bkSide"&&BK){BK.side=e.target.checked;bkSync()}});
   $("ficha").addEventListener("keydown",e=>{if(e.target.id==="bkName"&&e.key==="Enter"){e.preventDefault();const x=$("bkSave");if(x&&!x.disabled)x.click()}});
   async function bkCommit(btn){
     if(!BK||!bkDirty())return;
@@ -2293,6 +2301,7 @@ export function startApp(env){
     const patch={};
     if(name!==b.name)patch.name=name;
     if(d.cat!==(b.category||""))patch.category=d.cat;
+    if(d.side!==!!b.per_side)patch.per_side=d.side;
     const file=d.file,key=d.key;
     btn.disabled=true;
     if(Object.keys(patch).length){const prevN=fichaN;if(patch.name)fichaN=patch.name;if(!await bankSave(key,patch)){fichaN=prevN;btn.disabled=false;return}}
@@ -2323,6 +2332,11 @@ export function startApp(env){
       if(t.dataset.bkdel!=null){const n=catalog[+t.dataset.bkdel];if(!t.classList.contains("arm")){t.classList.add("arm");t.textContent="¿Seguro? Lo dejan de ver todos";return}closeFicha(true);await bankDelete(n);return}
       if(t.dataset.bkpromote!=null){const n=catalog[+t.dataset.bkpromote];closeFicha(true);await bankPromote(n);return}
     }
+    if(t.dataset.side!=null){const n=catalog[+t.dataset.side],k=imgKey(n),on=!perSide(n);
+      const b=bankRows.find(x=>x.key===k),side=Object.assign({},restCfg.side||{});
+      if(b&&!!b.per_side===on)delete side[k];else side[k]=on;
+      await store.setSettings(Object.assign({},restCfg,{side}));render();renderFicha();
+      toast(on?"“"+n+"”: ahora anotas el peso de cada mancuerna":"“"+n+"”: ahora anotas el peso total");return}
     if(t.dataset.catopen!=null){const n=catalog[+t.dataset.catopen];catOpen=catOpen===n?null:n;renderFicha();return}
     if(t.dataset.catset){const n=catalog[+t.dataset.ci],m=Object.assign({},cats);m[imgKey(n)]={c:t.dataset.catset,by:"user"};catOpen=null;await store.setCats(m);return}
     if(t.dataset.view!=null){openLB(catalog[+t.dataset.view]);return}

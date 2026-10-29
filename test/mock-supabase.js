@@ -5,7 +5,7 @@ if (!DB.bank_exercises) DB.bank_exercises = [
   ["peso_muerto","Peso muerto","piernas"],["vuelo_lateral","Vuelo lateral","hombros"],["press_inclinado_con_mancuernas","Press inclinado con mancuernas","pecho"],
   ["extension_de_cuadriceps","Extensión de cuádriceps","piernas"],["curl_de_biceps_en_maquina","Curl de bíceps en máquina","brazos"],["crunch_con_pesa_rusa","Crunch con pesa rusa","core"],
   ["air_runner","Air runner","cardio"],["remo_ergometro","Remo Ergometro","cardio"],["remo_en_t","Remo en T","espalda"],["pull_ups","Pull ups","espalda"],["hip_thrust_en_maquina","Hip Thrust en Maquina","gluteos"]
-].map(([key,name,category]) => ({ key, name, category, image_url: "/media/" + key + ".mp4", image_type: "video/mp4" }));
+].map(([key,name,category]) => ({ key, name, category, per_side: ["vuelo_lateral","press_inclinado_con_mancuernas","bulgaras","press_militar_sentado"].includes(key), image_url: "/media/" + key + ".mp4", image_type: "video/mp4" }));
 const save = () => localStorage.setItem("mockdb", JSON.stringify(DB));
 const uid4 = () => crypto.randomUUID();
 const code = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
