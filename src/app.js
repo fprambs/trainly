@@ -439,8 +439,7 @@ export function startApp(env){
   function weightLabel(n){
     const lab=document.querySelector('label[for="weight"]');if(!lab)return;
     const ps=!!n&&perSide(n);
-    lab.innerHTML=ps?DUO_IC+'Kg por mancuerna':'Peso (kg)';
-    lab.classList.toggle("ps",ps);
+    lab.textContent=ps?"Peso (kg c/u)":"Peso (kg)";
     $("weight").placeholder=ps?"ej. 5 c/u":"ej. 40";
   }
   function updateExCard(){
