@@ -970,3 +970,9 @@ body.kb .tabs .rest{margin-bottom:6px}
 .srm:active{color:var(--down)}
 .scur .srm{width:36px;height:36px;box-shadow:none;background:var(--surface2);border-radius:10px}
 .scur .srm svg,.srows .srm svg{width:18px!important;height:18px!important}
+.adminbox{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;border:1.5px dashed var(--accent);background:color-mix(in srgb,var(--soft) 50%,transparent)}
+.adminbox>b{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--accent)}
+.adminbox .f{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted);font-weight:600}
+.adminbox .rowin{display:flex;gap:6px}
+.adminbox .rowin input{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--line);padding:0 10px;font-size:16px;background:var(--surface);color:var(--ink)}
+.adminbox .hint{margin:0;font-size:.78rem}
