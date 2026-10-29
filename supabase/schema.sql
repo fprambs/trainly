@@ -351,3 +351,19 @@ begin
   end loop;
 end $$;
 alter default privileges in schema public revoke execute on functions from anon;
+
+-- ---------------------------------------------------------------------
+-- Banco común de ejercicios (lo ven todos; se administra desde SQL)
+-- ---------------------------------------------------------------------
+create table if not exists public.bank_exercises(
+  key text primary key,
+  name text not null,
+  image_url text, image_type text,
+  category text,
+  created_at timestamptz not null default now()
+);
+alter table public.bank_exercises enable row level security;
+drop policy if exists bank_read on public.bank_exercises;
+create policy bank_read on public.bank_exercises for select to authenticated using (true);
+revoke all on public.bank_exercises from anon;
+grant select on public.bank_exercises to authenticated;
