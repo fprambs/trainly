@@ -13,29 +13,53 @@ const keyOf = (s: string) => norm(s).replace(/[^a-z0-9]+/g, "_");
 const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 const busy = () => { const err: any = new Error("La IA está ocupada, intenta en un momento"); err.status = 429; return err; };
 
+// Modelos de Groq en orden de preferencia; si alguno no existe en la cuenta, se elige otro disponible.
+const PREFERRED = ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.1-8b-instant"];
+let pickedModel: string | null = null;
+const groqKey = () => (Netlify.env.get("GROQ_API_KEY") || "").trim().replace(/^["']|["']$/g, "");
+
+async function availableModel(exclude: Set<string>): Promise<string | null> {
+  const r = await fetch("https://api.groq.com/openai/v1/models", { headers: { authorization: `Bearer ${groqKey()}` } });
+  if (!r.ok) return null;
+  const ids: string[] = ((await r.json())?.data || []).filter((m: any) => m.active !== false).map((m: any) => m.id);
+  const pref = PREFERRED.find(m => ids.includes(m) && !exclude.has(m));
+  if (pref) return pref;
+  // cualquier modelo de texto (no audio, no guardias)
+  return ids.find(id => !exclude.has(id) && !/whisper|tts|guard|orpheus|playai|distil/i.test(id)) || null;
+}
+
 async function groq(prompt: string, asJson: boolean): Promise<string> {
-  const key = (Netlify.env.get("GROQ_API_KEY") || "").trim().replace(/^["']|["']$/g, "");
-  const model = Netlify.env.get("GROQ_MODEL") || "llama-3.3-70b-versatile";
+  let model = pickedModel || Netlify.env.get("GROQ_MODEL") || PREFERRED[0];
+  const tried = new Set<string>();
   const body: any = {
-    model,
     messages: [{ role: "user", content: prompt }],
     temperature: asJson ? 0.2 : 0.5,
-    max_tokens: asJson ? 2000 : 900
+    max_tokens: asJson ? 2000 : 1200
   };
   if (asJson) body.response_format = { type: "json_object" };
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    body.model = model;
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "content-type": "application/json", authorization: `Bearer ${key}` },
+      headers: { "content-type": "application/json", authorization: `Bearer ${groqKey()}` },
       body: JSON.stringify(body)
     });
     if (r.status === 429 || r.status === 503) { await sleep(1500 * (attempt + 1)); continue; }
     const data: any = await r.json().catch(() => ({}));
     const msg = data?.error?.message || `Groq ${r.status}`;
-    if (r.status === 401 || r.status === 403) { const err: any = new Error("La clave de Groq no es válida (revisa GROQ_API_KEY en Netlify)"); err.status = 503; throw err; }
+    if ((r.status === 401 || r.status === 403) && !/model/i.test(msg)) { const err: any = new Error("La clave de Groq no es válida (revisa GROQ_API_KEY en Netlify)"); err.status = 503; throw err; }
+    // modelo inexistente o sin acceso: buscar otro disponible en la cuenta
+    if ((r.status === 404 || /model/i.test(msg) && /not (found|exist)|does not exist|decommission|access/i.test(msg))) {
+      tried.add(model);
+      const next = await availableModel(tried);
+      if (!next) throw new Error("Groq: no hay modelos disponibles en tu cuenta (" + msg + ")");
+      console.warn("groq: cambiando de modelo", model, "->", next);
+      model = next; continue;
+    }
     // si el modelo no logró armar JSON válido, reintentar sin modo JSON (parseJson lo rescata)
     if (r.status === 400 && body.response_format && /json/i.test(msg)) { delete body.response_format; continue; }
     if (!r.ok) { console.error("groq error", r.status, msg); throw new Error("Groq: " + msg); }
+    pickedModel = model;
     return data?.choices?.[0]?.message?.content || "";
   }
   throw busy();
