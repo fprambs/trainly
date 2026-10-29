@@ -414,7 +414,7 @@ export function startApp(env){
     if(Object.values(used).some(Boolean)){["reps","weight","dist","time"].forEach(k=>{if(used[k])fields.add(k);else if(!FIELD_INPUTS[k].some(id=>$(id).value!==""))fields.delete(k)});applyFields()}
     const vals={sets:last.sets,reps:last.reps,weight:valOf(last,"weight"),dist:last.dist};
     let filled=false;
-    Object.keys(vals).forEach(k=>{if($(k).value===""&&vals[k]!=null){$(k).value=vals[k];filled=true}});
+    Object.keys(vals).forEach(k=>{if($(k).value===""&&vals[k]!=null){$(k).value=k==="weight"?String(vals[k]).replace(".",","):vals[k];filled=true}});
     if(getMins()==null&&last.mins!=null){setMins(last.mins);filled=true}
     if(filled)flash("Relleno con tu última vez ("+fmtShort(last.date)+"). Cambia lo que necesites.");
   }
@@ -532,7 +532,7 @@ export function startApp(env){
   document.addEventListener("click",e=>{const m=e.target.closest(".mini");if(m)openLB(m.dataset.n)});
 
   // ---------- guardar registro ----------
-  const numOrNull=v=>v===""?null:Number(v);
+  const numOrNull=v=>{v=String(v??"").trim().replace(",",".");if(v==="")return null;const n=Number(v);return isFinite(n)?n:null};
   $("form").addEventListener("submit",async ev=>{
     ev.preventDefault();
     const e={
@@ -550,7 +550,7 @@ export function startApp(env){
       ["sets","reps","weight","dist","tMin","tSec","memo"].forEach(k=>$(k).value="");
       nameIn.value="";updateAddBtn();
       picked=e.name;
-      setAddOpen(false);toast("Agregado: "+e.name);
+      setAddOpen(false);toast("Agregado: "+e.name+(otherName()?" · "+otherName():""));
     }catch(err){
       flash(err&&err.code==="quota_exceeded"?"La bitácora está llena. Borra registros antiguos para seguir anotando.":"No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.",true);
     }
@@ -923,6 +923,9 @@ export function startApp(env){
   // ---------- aviso flotante ----------
   let toastT=null;
   let toastAct=null;
+  // modo profesor: nombre del alumno al que se está anotando (vacío si es uno mismo)
+  const otherName=()=>env.isCoach()&&ath&&ath.user_id!==me?ath.name:"";
+  function renderWho(){const n=otherName(),w=$("whoBar");if(!w)return;w.hidden=!n;if(n)w.innerHTML='<span class="av">'+esc(n.charAt(0).toUpperCase())+'</span><span>Anotando a <b>'+esc(n)+'</b></span>'}
   function toast(msg,star,action){
     const t=$("toast");toastAct=action||null;
     t.innerHTML='<span class="tmsg">'+(star?'<b>★</b> ':'')+esc(msg)+'</span>'+(action?'<button type="button" id="toastBtn">'+esc(action.label)+'</button>':'');
@@ -1147,6 +1150,7 @@ export function startApp(env){
     const c=ev.target.closest("[data-open]");
     if(c&&!c.closest("#exDet")){if(Date.now()-lastDragEnd<500)return;openDetail(c.dataset.open)}
   });
+  document.addEventListener("click",ev=>{const g=ev.target.closest("[data-gotab]");if(g)showTab(g.dataset.gotab)});
   document.addEventListener("keydown",ev=>{if((ev.key==="Enter"||ev.key===" ")&&ev.target.matches&&ev.target.matches(".tcard[data-open]")){ev.preventDefault();openDetail(ev.target.dataset.open)}});
 
   // completar una serie: por tiempo (hoy) primero corre el cronómetro; luego siempre se confirma en la ventana
@@ -1181,13 +1185,13 @@ export function startApp(env){
     }).join("");
     $("exDet").innerHTML='<div class="dwrap">'+
       '<div class="dtop"><button type="button" class="iconbtn" data-dact="close" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><span>Ejercicio '+(idx+1)+' de '+day.length+'</span>'+
-        '<button type="button" class="iconbtn edt'+(editEntry===e.id?' on':'')+'" data-eid="'+esc(e.id)+'" aria-label="Editar o borrar ejercicio">'+PENCIL+'</button></div>'+
+        '<span class="dtsp"></span></div>'+
       '<div class="dmedia">'+(r?mediaBig(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+(cat&&cat!=="otro"&&CATMAP[cat]?'<span class="dcat">'+esc(CATMAP[cat][1])+'</span>':'')+'</div>'+
       '<div class="dhead"><h2 id="detName">'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★ Récord</span>':'')+'</h2>'+(lt?'<p>La vez pasada ('+esc(fmtShort(lt.date))+'): '+esc(lt.line)+'</p>':'')+(e.memo?'<p class="dmemo">'+esc(e.memo)+'</p>':'')+'</div>'+
       (editEntry===e.id?entryEditHTML(e):'')+
       (ds.length?'<ol class="srows" aria-label="Series">'+rows+'</ol>':'<p class="hint">Este ejercicio no tiene series. Agrega una con “+ Serie”.</p>')+
       '<div class="dacts"><button type="button" class="btnlike" data-dact="addset"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Serie</button>'+
-        '<button type="button" class="btnlike edt" data-eid="'+esc(e.id)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>Editar plan</button></div>'+
+        '<button type="button" class="btnlike edt" data-eid="'+esc(e.id)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>'+(editEntry===e.id?'Cerrar edición':'Editar o borrar')+'</button></div>'+
       '<div class="dnav">'+(prev?'<button type="button" class="btnlike" data-dnav="'+esc(prev.id)+'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg><span>'+esc(prev.name)+'</span></button>':'<span></span>')+
         (next?'<button type="button" class="btnlike" data-dnav="'+esc(next.id)+'"><span>'+esc(next.name)+'</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg></button>':'<span></span>')+'</div>'+
       '</div>';
@@ -1250,7 +1254,7 @@ export function startApp(env){
     if(F.t){const ts=D.t==null?null:Math.round(D.t*60);
       f+='<div class="smf"><label for="sm-tm">Tiempo</label><div class="smtime"><input id="sm-tm" data-smk="tm" class="num" type="text" inputmode="numeric" placeholder="min" aria-label="Minutos" value="'+(ts==null?"":Math.floor(ts/60))+'"><span>:</span><input id="sm-ts" data-smk="ts" class="num" type="text" inputmode="numeric" placeholder="seg" aria-label="Segundos" value="'+(ts==null?"":pad(ts%60))+'"><small>min : seg</small></div></div>'}
     $("setModal").innerHTML='<div class="grab" aria-hidden="true"></div>'+
-      '<div class="smhead">'+(r?'<span class="smthumb">'+mediaHTML(r)+'</span>':'')+'<div><small>Serie '+(SM.i+1)+' de '+t+(SM.edit?' · hecha':'')+'</small><h2 id="smTitle">'+esc(e.name)+'</h2></div></div>'+
+      '<div class="smhead">'+(r?'<span class="smthumb">'+mediaHTML(r)+'</span>':'')+'<div><small>Serie '+(SM.i+1)+' de '+t+(SM.edit?' · hecha':'')+(otherName()?' · '+esc(otherName()):'')+'</small><h2 id="smTitle">'+esc(e.name)+'</h2></div></div>'+
       '<div class="smfields">'+f+'</div><div id="smDelta">'+smDelta(e,D)+'</div>'+
       '<div class="smacts"><button type="button" class="btnlike" data-sma="cancel">Cancelar</button>'+(SM.edit?'<button type="button" class="btnlike danger" data-sma="undo">Desmarcar</button>':'')+
       '<button type="button" class="btnlike solid" id="smOk" data-sma="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>'+(SM.edit?'Guardar':'Confirmar serie')+'</button></div>';
@@ -1414,6 +1418,7 @@ export function startApp(env){
   }
 
   function render(){
+    renderWho();
     const days=new Set(entries.map(e=>e.date));
     const now=new Date(),dow=(now.getDay()+6)%7;
     const monday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow);
@@ -1573,7 +1578,7 @@ export function startApp(env){
     }
     $("calPop").innerHTML='<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b>'+esc(first.toLocaleDateString("es-CL",{month:"long",year:"numeric"}))+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente">›</button></div>'+
       '<div class="calgrid">'+["L","M","M","J","V","S","D"].map(x=>'<span class="wd">'+x+'</span>').join("")+cells+'</div>'+
-      '<div class="calfoot"><span><i></i>Días con registros</span><button type="button" class="btnlike" data-cd="'+today+'">Ir a hoy</button></div>';
+      '<div class="calfoot"><span><i></i>Días con registros</span><button type="button" class="btnlike" data-cd="'+today+'">Volver a hoy</button></div>';
   }
   $("dayPick").addEventListener("click",()=>openCal($("calPop").hidden));
   $("calPop").addEventListener("click",e=>{
@@ -1594,7 +1599,7 @@ export function startApp(env){
     $("dayStateTxt").textContent=diff<0?"":"Planificando un día futuro";
     const short=parse(d).toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
     $("submitBtn").textContent=diff===0?"Agregar a hoy":"Agregar al "+short;
-    $("addFor").innerHTML="Para <b>"+esc(diff===0?"hoy, "+fmtDay(d):fmtDay(d))+"</b>";
+    $("addFor").innerHTML=(otherName()?"<b>"+esc(otherName())+"</b> · ":"")+"Para <b>"+esc(diff===0?"hoy, "+fmtDay(d):fmtDay(d))+"</b>";
   }
   $("date").addEventListener("change",()=>goDay($("date").value||today));
 
@@ -1981,13 +1986,11 @@ export function startApp(env){
     renderStreak();
     const h=$("history");
     if(!entries.length){
-      h.innerHTML='<div class="empty"><span class="tag">Ejemplo</span><p style="margin:0 0 8px">Aquí aparecerán tus sesiones agrupadas por día. Se verá así:</p>'+
-        entryHTML({name:"Sentadilla con barra",sets:4,reps:10,weight:40,memo:"Bajar más profundo"},true)+
-        entryHTML({name:"Plancha",sets:3,mins:1},true)+'</div>';
+      h.innerHTML='<div class="emptyst"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg><b>Tu historial está vacío</b><p>Aquí aparecerán tus entrenamientos agrupados por día, con las series que marcaste.</p><button type="button" class="btnlike solid" data-gotab="anotar">Ir a Hoy</button></div>';
       $("moreBtn").hidden=true;return;
     }
     const byDay={};entries.forEach(e=>(byDay[e.date]=byDay[e.date]||[]).push(e));
-    const allDays=Object.keys(byDay).sort().reverse();
+    const allDays=Object.keys(byDay).filter(d=>d<=today).sort().reverse(); // los días planificados a futuro se ven en el calendario y en Hoy
     const daysToShow=allDays.slice(0,shownDays);
     let html="",lastMonth="";
     daysToShow.forEach(d=>{
@@ -2035,7 +2038,7 @@ export function startApp(env){
   }
   function renderProgress(){
     const names=progNames().map(o=>o.n);
-    if(!names.length){$("picker").hidden=true;$("chart").innerHTML='<p class="note">Cuando anotes el mismo ejercicio en distintos días, aquí verás cómo sube tu peso, tus repeticiones o tu tiempo.</p>';$("plog").innerHTML="";return}
+    if(!names.length){$("picker").hidden=true;$("chart").innerHTML='<div class="emptyst"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></svg><b>Aún no hay progreso que mostrar</b><p>Cuando anotes el mismo ejercicio en distintos días, aquí verás cómo sube tu peso, tus repeticiones o tu tiempo.</p><button type="button" class="btnlike solid" data-gotab="anotar">Ir a Hoy</button></div>';$("plog").innerHTML="";return}
     $("picker").hidden=false;
     if(!names.includes(picked))picked=names[0];
     $("pickName").textContent=picked;
