@@ -12,12 +12,12 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0E0F16; --surface:#171925; --surface2:#1F2230; --ink:#ECEDF4; --muted:#979CB0; --line:#2A2D3D;
   --ok:#3DD68C; --oksoft:#0F2A1E; --down:#FF7EA8; --downsoft:#3A1626; --gold:#FFC54D; --goldsoft:#33290F;
-  --media:#F2F3F5; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
+  --media:#1F2230; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
   --accent:#8E84FF; --accent-ink:#120F2E; --soft:#221F45; --up:#8E84FF; --upsoft:#221F45; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#0E0F16; --surface:#171925; --surface2:#1F2230; --ink:#ECEDF4; --muted:#979CB0; --line:#2A2D3D;
   --ok:#3DD68C; --oksoft:#0F2A1E; --down:#FF7EA8; --downsoft:#3A1626; --gold:#FFC54D; --goldsoft:#33290F;
-  --media:#F2F3F5; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
+  --media:#1F2230; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
   --accent:#8E84FF; --accent-ink:#120F2E; --soft:#221F45; --up:#8E84FF; --upsoft:#221F45; color-scheme:dark}
 :root[data-palette="azul"]{--accent:#1F6FEB; --accent-ink:#FFFFFF; --soft:#E3EEFD; --up:#1F6FEB; --upsoft:#E3EEFD;}
 @media (prefers-color-scheme: dark){:root[data-palette="azul"]:not([data-theme="light"]){--accent:#5AA2FF; --accent-ink:#06162E; --soft:#132A47; --up:#5AA2FF; --upsoft:#132A47;}}
@@ -1005,3 +1005,13 @@ body.kb .tabs .rest{margin-bottom:6px}
 @media (min-width:820px){.exg3{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (max-width:380px){.tthumb{width:72px}}
 .pk-img{width:64px;height:auto;aspect-ratio:var(--ar)}
+.bksave{display:flex;gap:8px}
+.bksave .btnlike{min-height:50px;font-weight:700}
+.bksave .solid{flex:1}
+.bksave .btnlike:disabled{opacity:.45}
+.fimedia.preview{position:relative;cursor:default}
+.pvtag{position:absolute;left:10px;top:10px;padding:3px 9px;border-radius:99px;background:var(--gold);color:#fff;font-size:.75rem;font-weight:700}
+/* el contenedor siempre 16:9: sin franjas a los lados en el celular */
+.fimedia,.dmedia,.fmedia{height:auto!important;max-height:none!important;width:100%}
+/* las ventanas con scroll no deben aplastar su contenido (el video quedaba bajito con franjas a los lados) */
+.smsheet>*,.dwrap>*,.addcard>*{flex-shrink:0}

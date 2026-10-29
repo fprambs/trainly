@@ -427,7 +427,10 @@ export function startApp(env){
   $("exUpload").addEventListener("click",()=>pickFile($("excard").dataset.name));
   $("fileIn").addEventListener("change",async e=>{
     const f=e.target.files&&e.target.files[0];e.target.value="";
-    if(pendingBank){const k=pendingBank;pendingBank=null;await uploadBank(k,f);return}
+    if(pendingBank){pendingBank=null;if(!f||!BK)return;
+      if(!/^(image|video)\//.test(f.type)){toast("Ese archivo no es una imagen ni un video.");return}
+      if(f.size>20*1024*1024){toast("El archivo pesa más de 20 MB. Prueba con uno más liviano.");return}
+      if(BK.preview)URL.revokeObjectURL(BK.preview);BK.file=f;BK.preview=URL.createObjectURL(f);BK.ptype=f.type;renderFicha();return}
     if(pendingName)await uploadFor(pendingName,f);
   });
   async function uploadBank(key,file){
@@ -2097,18 +2100,18 @@ export function startApp(env){
     updateCatHint();renderFicha();
   }
   $("exSegs").addEventListener("click",e=>{const b=e.target.closest("[data-seg]");if(!b)return;exSeg=b.dataset.seg;catFilter="";renderGrid()});
-  function openFicha(n){fichaN=n;catOpen=null;renderFicha();$("fichaOv").hidden=false;document.body.classList.add("sm-open")}
-  function closeFicha(){fichaN=null;catOpen=null;$("fichaOv").hidden=true;$("ficha").innerHTML="";if($("smOv").hidden)document.body.classList.remove("sm-open")}
+  function openFicha(n){bkReset();fichaN=n;catOpen=null;renderFicha();$("fichaOv").hidden=false;document.body.classList.add("sm-open")}
+  function closeFicha(force){if(!force&&bkDirty()&&!confirmDiscard())return;bkReset();fichaN=null;catOpen=null;$("fichaOv").hidden=true;$("ficha").innerHTML="";if($("smOv").hidden)document.body.classList.remove("sm-open")}
   function renderFicha(){
     if(!fichaN)return;
-    const i=catalog.indexOf(fichaN);if(i<0){closeFicha();return}
+    const i=catalog.indexOf(fichaN);if(i<0){closeFicha(true);return}
     const n=fichaN,o=segOf(n),own=o==="mio",cat=CATMAP[catOf(n)],r=imgOf(n);
     const rows=entries.filter(e=>norm(e.name)===norm(n));
     const last=rows.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt)[0];
     const meta=rows.length?(rows.length+(rows.length===1?" vez":" veces")+" · último "+fmtShort(last.date)+(valOf(last,"weight")!=null?" · "+fmtN(valOf(last,"weight"))+" kg":"")):"Sin registros aún";
     $("ficha").innerHTML='<div class="grab" aria-hidden="true"></div>'+
       '<div class="fihead"><h2 id="fichaName">'+esc(n)+'</h2>'+originTag(n)+'<button type="button" class="iconbtn" data-fclose aria-label="Cerrar">✕</button></div>'+
-      '<button type="button" class="fimedia'+(r?'':' noimg')+'" data-view="'+i+'" aria-label="Ver '+esc(n)+' en grande"'+(r?'':' disabled')+'>'+(r?mediaHTML(r):'Sin imagen')+'</button>'+
+      (BK&&BK.preview&&bankRowOf(n)&&bankRowOf(n).key===BK.key?'<div class="fimedia preview">'+mediaHTML({url:BK.preview,type:BK.ptype})+'<span class="pvtag">Vista previa · sin guardar</span></div>':'<button type="button" class="fimedia'+(r?'':' noimg')+'" data-view="'+i+'" aria-label="Ver '+esc(n)+' en grande"'+(r?'':' disabled')+'>'+(r?mediaHTML(r):'Sin imagen')+'</button>')+
       '<div class="firow">'+(own?'<button type="button" class="catchip'+(isGuess(n)?' guess':'')+'" data-catopen="'+i+'" aria-expanded="'+(catOpen===n)+'" title="Cambiar músculo"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+' ▾</button>':'<span class="catchip ro"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+'</span>')+'<span class="meta">'+esc(meta)+'</span></div>'+
       (catOpen===n&&own?'<div class="catpick" role="group" aria-label="Elegir músculo">'+CATS.map(c=>'<button type="button" data-catset="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cat[0]&&!isGuess(n))+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>':'')+
       trendHTML(n)+
@@ -2119,23 +2122,40 @@ export function startApp(env){
         (own?'<button type="button" class="btnlike danger" data-rm="'+i+'">Quitar</button>':'')+
         (own&&isAdmin()?'<button type="button" class="btnlike" data-bkpromote="'+i+'">Pasar al banco común</button>':'')+'</div>';
   }
+  // borrador de cambios del banco: se aplican todos juntos con "Guardar cambios"
+  let BK=null; // {key,name,cat,file,preview,ptype}
+  function bkDraft(n){const b=bankRowOf(n);if(!b)return null;if(!BK||BK.key!==b.key)BK={key:b.key,name:b.name,cat:b.category||catOf(n),file:null,preview:null};return BK}
+  function bkDirty(){if(!BK)return false;const b=bankRows.find(x=>x.key===BK.key);if(!b)return false;return BK.name.trim()!==b.name||BK.cat!==(b.category||"")||!!BK.file}
+  function bkReset(){if(BK&&BK.preview)URL.revokeObjectURL(BK.preview);BK=null}
+  let discardArm=0;
+  function confirmDiscard(){if(Date.now()-discardArm<4000)return true;discardArm=Date.now();toast("Tienes cambios sin guardar. Cierra otra vez para descartarlos.");return false}
   function adminBankHTML(n,i){
-    const b=bankRowOf(n),cur=b&&b.category||catOf(n);
+    const d=bkDraft(n);if(!d)return "";
     return '<div class="adminbox"><b>Administrar banco común</b>'+
-      '<label class="f"><span>Nombre</span><input id="bkName" data-bki="'+i+'" value="'+esc(b?b.name:n)+'" enterkeyhint="done" autocomplete="off"></label>'+
-      '<div class="catpick" role="group" aria-label="Músculo">'+CATS.map(c=>'<button type="button" data-bkcat="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cur)+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>'+
-      '<div class="fiacts"><button type="button" class="btnlike" data-bkimg="'+i+'">Cambiar video o imagen</button><button type="button" class="btnlike danger" data-bkdel="'+i+'">Quitar del banco</button></div>'+
-      '<p class="hint">Cada cambio se guarda al instante y lo ven todos los usuarios.</p></div>';
+      '<label class="f"><span>Nombre</span><input id="bkName" value="'+esc(d.name)+'" enterkeyhint="done" autocomplete="off"></label>'+
+      '<div class="catpick" role="group" aria-label="Músculo">'+CATS.map(c=>'<button type="button" data-bkcat="'+c[0]+'" aria-pressed="'+(c[0]===d.cat)+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>'+
+      '<div class="fiacts"><button type="button" class="btnlike" data-bkimg="1">'+(d.file?'Elegir otro video':'Cambiar video o imagen')+'</button><button type="button" class="btnlike danger" data-bkdel="'+i+'">Quitar del banco</button></div>'+
+      (d.file?'<p class="hint">Nuevo: '+esc(d.file.name||"archivo")+' ('+(d.file.size/1048576).toFixed(1).replace(".",",")+' MB). Se sube al guardar.</p>':'')+
+      '<div class="bksave"><button type="button" class="btnlike" data-bkundo="1"'+(bkDirty()?'':' disabled')+'>Descartar</button><button type="button" class="btnlike solid" id="bkSave" data-bksave="1"'+(bkDirty()?'':' disabled')+'>Guardar cambios</button></div>'+
+      '<p class="hint">Los cambios los ven todos los usuarios.</p></div>';
   }
-  async function saveBankName(inp){
-    if(!inp||inp.dataset.saving)return;
-    const n=catalog[+inp.dataset.bki],b=bankRowOf(n),v=inp.value.trim().replace(/\s+/g," ");
-    if(!b||!v||v===b.name)return;
-    inp.dataset.saving="1";const prevN=fichaN;fichaN=v;
-    if(await bankSave(b.key,{name:v}))toast("Nombre guardado: "+v);else{fichaN=prevN;renderFicha()}
+  function bkSync(){const on=bkDirty();document.querySelectorAll("[data-bksave],[data-bkundo]").forEach(x=>x.disabled=!on)}
+  $("ficha").addEventListener("input",e=>{if(e.target.id==="bkName"&&BK){BK.name=e.target.value;bkSync()}});
+  $("ficha").addEventListener("keydown",e=>{if(e.target.id==="bkName"&&e.key==="Enter"){e.preventDefault();const x=$("bkSave");if(x&&!x.disabled)x.click()}});
+  async function bkCommit(btn){
+    if(!BK||!bkDirty())return;
+    const d=BK,b=bankRows.find(x=>x.key===d.key);if(!b)return;
+    const name=d.name.trim().replace(/\s+/g," ");if(!name){toast("Escribe un nombre");return}
+    btn.disabled=true;btn.textContent=d.file?"Subiendo video…":"Guardando…";
+    const patch={};
+    if(name!==b.name)patch.name=name;
+    if(d.cat!==(b.category||""))patch.category=d.cat;
+    try{if(d.file){const res=await assets.upload(d.file);patch.image_url=res.url;patch.image_type=res.contentType||d.file.type}}
+    catch(e){toast("No se pudo subir el video. Revisa tu conexión.");btn.disabled=false;btn.textContent="Guardar cambios";return}
+    const prevN=fichaN;if(patch.name)fichaN=patch.name;
+    bkReset();
+    if(await bankSave(d.key,patch))toast("Cambios guardados");else{fichaN=prevN;renderFicha()}
   }
-  $("ficha").addEventListener("focusout",e=>{if(e.target.id==="bkName")saveBankName(e.target)});
-  $("ficha").addEventListener("keydown",e=>{if(e.target.id==="bkName"&&e.key==="Enter"){e.preventDefault();e.target.blur()}});
   $("fichaOv").addEventListener("click",e=>{if(e.target.id==="fichaOv"||e.target.closest("[data-fclose]"))closeFicha()});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&fichaN&&$("lb").hidden)closeFicha()});
   function updateCatHint(){
@@ -2149,21 +2169,22 @@ export function startApp(env){
     const t=e.target.closest("button");if(!t)return;
     if(t.dataset.ficha!=null){openFicha(catalog[+t.dataset.ficha]);return}
     if(isAdmin()){
-      if(t.dataset.bkname!=null){const n=catalog[+t.dataset.bkname],b=bankRowOf(n),v=$("bkName").value.trim().replace(/\s+/g," ");if(!b||!v||v===b.name)return;const prevN=fichaN;fichaN=v;if(await bankSave(b.key,{name:v}))toast("Nombre actualizado");else{fichaN=prevN;renderFicha()}return}
-      if(t.dataset.bkcat){const n=catalog[+t.dataset.ci],b=bankRowOf(n);if(b&&await bankSave(b.key,{category:t.dataset.bkcat}))toast("Músculo actualizado");return}
-      if(t.dataset.bkimg!=null){const b=bankRowOf(catalog[+t.dataset.bkimg]);if(b&&assets){pendingBank=b.key;$("fileIn").click()}return}
-      if(t.dataset.bkdel!=null){const n=catalog[+t.dataset.bkdel];if(!t.classList.contains("arm")){t.classList.add("arm");t.textContent="¿Seguro? Lo dejan de ver todos";return}closeFicha();await bankDelete(n);return}
-      if(t.dataset.bkpromote!=null){const n=catalog[+t.dataset.bkpromote];closeFicha();await bankPromote(n);return}
+      if(t.dataset.bkcat&&BK){BK.cat=t.dataset.bkcat;renderFicha();return}
+      if(t.dataset.bkimg!=null&&BK&&assets){pendingBank=BK.key;$("fileIn").click();return}
+      if(t.dataset.bksave){await bkCommit(t);return}
+      if(t.dataset.bkundo){bkReset();renderFicha();return}
+      if(t.dataset.bkdel!=null){const n=catalog[+t.dataset.bkdel];if(!t.classList.contains("arm")){t.classList.add("arm");t.textContent="¿Seguro? Lo dejan de ver todos";return}closeFicha(true);await bankDelete(n);return}
+      if(t.dataset.bkpromote!=null){const n=catalog[+t.dataset.bkpromote];closeFicha(true);await bankPromote(n);return}
     }
     if(t.dataset.catopen!=null){const n=catalog[+t.dataset.catopen];catOpen=catOpen===n?null:n;renderFicha();return}
     if(t.dataset.catset){const n=catalog[+t.dataset.ci],m=Object.assign({},cats);m[imgKey(n)]={c:t.dataset.catset,by:"user"};catOpen=null;await store.setCats(m);return}
     if(t.dataset.view!=null){openLB(catalog[+t.dataset.view]);return}
-    if(t.dataset.log!=null){const n=catalog[+t.dataset.log];closeFicha();showTab("anotar");renderToday();addUserClosed=false;setAddOpen(true);nameIn.value=n;updateAddBtn();fillFromLast(nameIn.value);setTimeout(()=>$("sets").focus(),80);return}
+    if(t.dataset.log!=null){const n=catalog[+t.dataset.log];closeFicha(true);showTab("anotar");renderToday();addUserClosed=false;setAddOpen(true);nameIn.value=n;updateAddBtn();fillFromLast(nameIn.value);setTimeout(()=>$("sets").focus(),80);return}
     if(t.dataset.img!=null){pickFile(catalog[+t.dataset.img]);return}
     if(t.dataset.rm!=null){
       const n=catalog[+t.dataset.rm];
       if(!t.classList.contains("arm")){t.classList.add("arm");t.textContent="¿Seguro? Toca otra vez";return}
-      closeFicha();
+      closeFicha(true);
       try{
         await store.setCatalog(catalog.filter(c=>c!==n));
         toast("Quitado: "+n,false,{label:"Deshacer",fn:async()=>{await store.setCatalog(sortCat(Array.from(new Set(catalog.concat(n)))))}});
