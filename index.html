@@ -60,7 +60,15 @@
       <button type="button" class="acctbtn" id="acctBtn" aria-label="Mi cuenta"><span id="acctInitial">?</span></button>
     </div>
     <div class="athbar" id="athBar" hidden></div>
-    <p class="weekline" aria-label="Resumen de esta semana"><span class="wl" id="weekWho">Semana</span><span><b id="sWeek">0</b> <i id="sWeekL">días</i></span><span><b id="sKg">0</b> <i id="sKgL">series</i></span><span><b id="sVol">0</b> kg de volumen</span><span class="gold" id="sPrBox" hidden><b id="sPr">0</b> ★ <i id="sPrL">récords</i></span></p>
+    <section class="weekline" aria-label="Resumen de esta semana">
+      <span class="wl" id="weekWho">Esta semana</span>
+      <div class="wkstats">
+        <div class="wk"><b id="sWeek">0</b><i id="sWeekL">días</i></div>
+        <div class="wk"><b id="sKg">0</b><i id="sKgL">series</i></div>
+        <div class="wk"><b id="sVol">0</b><i>kg volumen</i></div>
+        <div class="wk gold" id="sPrBox" hidden><b id="sPr">0</b><i>★ <span id="sPrL">récords</span></i></div>
+      </div>
+    </section>
   </header>
   <p class="sync" id="syncNote" role="status" hidden></p>
 

@@ -272,7 +272,7 @@ $("athBar").addEventListener("click", e => {
 function updateWho() {
   const a = api.currentAthlete && api.currentAthlete();
   const mine = !a || a.id === myAthlete.id;
-  $("weekWho").textContent = mine ? "Semana" : "Semana · " + a.name;
+  $("weekWho").textContent = mine ? "Esta semana" : "Esta semana · " + a.name;
   document.body.classList.toggle("viewing-other", !mine);
 }
 
