@@ -1151,3 +1151,12 @@ body[data-tab="anotar"] .wrap{padding-bottom:calc(var(--dock,72px) + 96px)!impor
 body.det-open .rnextbtn{display:none}
 .scur .slab{white-space:nowrap}
 .scur .slab em{display:block;font-size:.8rem;line-height:1.1}
+
+/* rutina: orden de las series */
+.rutmode{display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.rutmode>span{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.rutmode>div{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rutmode button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:10px 12px;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.rutmode button small{font-size:.76rem;color:var(--muted);line-height:1.25}
+.rutmode button[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent) inset;background:var(--soft)}
+.rutcirc{margin:6px 0 0;font-size:.82rem;font-weight:600;color:var(--accent)}
