@@ -1186,3 +1186,10 @@ body.det-open .rnextbtn{display:none}
   .tabs .tetoca,.tabs .rest{max-width:760px;width:100%}
   body[data-tab="anotar"] .fab{right:max(18px,calc((100vw - 760px)/2 - 76px))}
 }
+/* deslizar entre días: el contenido que sale de lado no debe ensanchar la página (en el teléfono movía la barra de abajo) */
+html,body{overflow-x:clip}
+#tab-anotar{overflow-x:clip}
+@supports not (overflow:clip){html,body{overflow-x:hidden}}
+/* la barra "Te toca" aparece suave al cambiar de día */
+.tabs .tetoca:not([hidden]){animation:ttin .22s ease-out}
+@keyframes ttin{from{transform:translateY(14px);opacity:0}}
