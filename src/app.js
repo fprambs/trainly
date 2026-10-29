@@ -18,6 +18,10 @@ export function startApp(env){
 
   // ---------- pestañas ----------
   const TABS=["anotar","rutinas","historial","progreso","ejercicios"];
+  // teclado abierto (campo de texto con foco): se esconden la barra de abajo y el +, y el campo queda a la vista
+  const isTextField=el=>el&&((el.tagName==="INPUT"&&!/^(button|checkbox|radio|submit|file|range|color)$/i.test(el.type))||el.tagName==="TEXTAREA");
+  document.addEventListener("focusin",ev=>{if(isTextField(ev.target)){document.body.classList.add("kb");setTimeout(()=>{try{ev.target.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}},280)}});
+  document.addEventListener("focusout",()=>setTimeout(()=>{if(!isTextField(document.activeElement))document.body.classList.remove("kb")},60));
   function showTab(t){
     if(!TABS.includes(t))t="anotar";
     document.body.dataset.tab=t;
@@ -347,7 +351,7 @@ export function startApp(env){
   $("addOpen").addEventListener("click",()=>{addUserClosed=false;setAddOpen(true,true)});
   $("addClose").addEventListener("click",()=>{addUserClosed=true;setAddOpen(false);closeSugg()});
   function fillFromLast(n){
-    const last=entries.filter(e=>norm(e.name)===norm(n)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0))[0];
+    const last=entries.filter(e=>isReal(e)&&norm(e.name)===norm(n)).sort((a,b)=>b.date.localeCompare(a.date)||(b.createdAt||0)-(a.createdAt||0))[0];
     if(!last)return;
     // mostrar los mismos campos que usaste la última vez
     const used={reps:last.reps!=null,weight:last.weight!=null||valOf(last,"weight")!=null,dist:last.dist!=null,time:last.mins!=null};
@@ -567,6 +571,7 @@ export function startApp(env){
       '<span class="sv"><button type="button" data-ee="cancel">Cancelar</button><button type="button" class="btnlike solid" data-ee="save">Guardar</button></span></div></div>';
   }
   const ordOf=e=>e.order??e.createdAt??0;
+  const isReal=e=>e.date<today||(e.date===today&&doneArr(e).some(Boolean));
   document.addEventListener("click",async ev=>{
     const pb=ev.target.closest(".edt");
     if(pb){editEntry=editEntry===pb.dataset.eid?null:pb.dataset.eid;eeDraft={};reRenderLists();if(editEntry){const n=document.querySelector('.eedit [data-ef="name"]');if(n)n.focus()}return}
@@ -790,7 +795,7 @@ export function startApp(env){
   const better=(k,a,b)=>k==="best"?a<b:a>b;
   function bestOther(e){
     const k=keyFor(e);if(!k)return null;
-    const vs=entries.filter(x=>x.id!==e.id&&norm(x.name)===norm(e.name)).map(x=>valOf(x,k)).filter(v=>v!=null);
+    const vs=entries.filter(x=>x.id!==e.id&&isReal(x)&&norm(x.name)===norm(e.name)).map(x=>valOf(x,k)).filter(v=>v!=null);
     return vs.length?{k,v:k==="best"?Math.min(...vs):Math.max(...vs)}:null;
   }
   function checkPR(e){
@@ -804,7 +809,7 @@ export function startApp(env){
   let recIds=new Set();
   function computeRecords(){
     recIds=new Set();const groups={};
-    entries.forEach(e=>(groups[norm(e.name)]=groups[norm(e.name)]||[]).push(e));
+    entries.filter(isReal).forEach(e=>(groups[norm(e.name)]=groups[norm(e.name)]||[]).push(e));
     Object.values(groups).forEach(g=>{
       const k=g.map(keyFor).find(Boolean);if(!k)return;
       const vals=g.map(e=>({e,v:valOf(e,k)})).filter(o=>o.v!=null);
@@ -1359,7 +1364,7 @@ export function startApp(env){
     const list=entries.filter(e=>e.date===d).sort(byCreated);
     const groups=list.length?splitSessions(list):[];
     const sm=groups.length===1?sessDur(groups[0]):null;
-    $("todayTitle").innerHTML="Ejercicios"+(sm&&groups[0].end>groups[0].start?' <span class="sess">· sesión de '+fmtSess(sm)+'</span>':groups.length>1?' <span class="sess">· '+groups.length+' sesiones</span>':'');
+    $("todayTitle").innerHTML="Ejercicios"+(groups.length>1?' <span class="sess">· '+groups.length+' sesiones</span>':'');void sm;
     renderDay(d);
     const cur=d>today?[]:(groups.length?groups[groups.length-1].entries:[]);
     renderNext(cur);
@@ -1719,32 +1724,41 @@ export function startApp(env){
   $("repeatBox").addEventListener("keydown",e=>{if(e.target.id==="rName"&&e.key==="Enter"){e.preventDefault();const b=$("repeatBox").querySelector("[data-rsave]");if(b)b.click()}});
 
   // ---------- constancia (12 semanas) ----------
+  // calendario del historial: mes a mes, cada día entrenado marcado (más series = más intenso)
+  let stkMonth=null;
   function renderStreak(){
     const card=$("streakCard");
     if(!entries.length){card.hidden=true;return}
     card.hidden=false;
     const setsBy={};entries.forEach(e=>{const n=doneArr(e).filter(Boolean).length||(!+e.sets&&e.date<=today?1:0);if(n)setsBy[e.date]=(setsBy[e.date]||0)+n});
+    const planned=new Set(entries.filter(e=>e.date>today).map(e=>e.date));
     const now=parse(today),dow=(now.getDay()+6)%7,mon=new Date(now.getFullYear(),now.getMonth(),now.getDate()-dow);
-    const start=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()-77);
     // racha: semanas seguidas con al menos un día entrenado (si esta semana aún no, cuenta desde la anterior)
     const weekHas=w=>{for(let k=0;k<7;k++){const d=new Date(mon.getFullYear(),mon.getMonth(),mon.getDate()-7*w+k);if(setsBy[iso(d)])return true}return false};
     let streak=0,w=weekHas(0)?0:1;while(weekHas(w)&&w<200){streak++;w++}
-    let days=0;for(let k=0;k<84;k++){const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+k);if(setsBy[iso(d)])days++}
+    if(!stkMonth)stkMonth=new Date(now.getFullYear(),now.getMonth(),1);
+    const y=stkMonth.getFullYear(),m=stkMonth.getMonth(),first=new Date(y,m,1),nDays=new Date(y,m+1,0).getDate(),lead=(first.getDay()+6)%7;
     const lv=n=>!n?"":n<6?"l1":n<13?"l2":"l3";
-    let cells='';
-    ["L","M","M","J","V","S","D"].forEach((L,r)=>{
-      cells+='<span class="hl">'+(r%2===0?L:"")+'</span>';
-      for(let c=0;c<12;c++){const d=new Date(start.getFullYear(),start.getMonth(),start.getDate()+c*7+r),ds=iso(d),n=setsBy[ds]||0,fut=ds>today;
-        cells+='<button type="button" class="'+[lv(n),ds===today?"tdy":"",fut?"fut":""].filter(Boolean).join(" ")+'" data-hd="'+ds+'" aria-label="'+esc(fmtDay(ds))+(n?": "+n+(n===1?" serie":" series"):": sin entrenar")+'"'+(fut?' tabindex="-1"':'')+'></button>'}
-    });
+    let cells=["L","M","M","J","V","S","D"].map(L=>'<span class="cdh">'+L+'</span>').join("");
+    for(let k=0;k<lead;k++)cells+='<span></span>';
+    let mDays=0,mSets=0;
+    for(let d=1;d<=nDays;d++){
+      const ds=iso(new Date(y,m,d)),n=setsBy[ds]||0;if(n){mDays++;mSets+=n}
+      const cls=[lv(n),ds===today?"tdy":"",ds>today?"fut":"",planned.has(ds)?"plan":""].filter(Boolean).join(" ");
+      cells+='<button type="button" class="'+cls+'" data-hd="'+ds+'" aria-label="'+esc(fmtDay(ds))+(n?": "+n+(n===1?" serie":" series"):planned.has(ds)?": planificado":": sin entrenar")+'">'+d+'</button>';
+    }
+    let title=first.toLocaleDateString("es-CL",{month:"long",year:"numeric"});title=title.charAt(0).toUpperCase()+title.slice(1);
+    const atNow=y===now.getFullYear()&&m===now.getMonth();
     // músculos trabajados esta semana
     const wk={};entries.filter(e=>parse(e.date)>=mon).forEach(e=>{const n=doneArr(e).filter(Boolean).length;if(n){const c=catOf(e.name);wk[c]=(wk[c]||0)+n}});
     const wkHtml=Object.keys(wk).sort((a,b)=>wk[b]-wk[a]).map(c=>'<span class="catchip"><span class="catdot" style="background:'+CATMAP[c][2]+'"></span>'+CATMAP[c][1]+' · '+wk[c]+'</span>').join("");
-    card.innerHTML='<div class="stk-top"><div><b>'+streak+'<small>'+(streak===1?"semana":"semanas")+' seguidas</small></b></div><span>'+days+(days===1?" día":" días")+' entrenados en 12 semanas</span></div>'+
-      '<div class="heat">'+cells+'</div>'+
-      '<div class="hlegend">Menos <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> Más series</div>'+
+    card.innerHTML='<div class="stk-top"><div><b>'+streak+'<small>'+(streak===1?"semana":"semanas")+' seguidas</small></b></div><span>'+mDays+(mDays===1?" día":" días")+' en '+esc(first.toLocaleDateString("es-CL",{month:"long"}))+(mSets?' · '+mSets+' series':'')+'</span></div>'+
+      '<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b class="caltitle">'+esc(title)+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente"'+(atNow?' disabled':'')+'>›</button></div>'+
+      '<div class="hcal">'+cells+'</div>'+
+      '<div class="hlegend">Menos <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> Más series'+(planned.size?' · <i class="plan"></i> Planificado':'')+'</div>'+
       (wkHtml?'<div class="wkcats"><span>Esta semana:</span>'+wkHtml+'</div>':'');
   }
+  $("streakCard").addEventListener("click",e=>{const b=e.target.closest("[data-cm]");if(!b)return;e.stopPropagation();stkMonth=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+Number(b.dataset.cm),1);renderStreak()});
   $("history").addEventListener("click",e=>{const b=e.target.closest("[data-hsave]");if(!b)return;showTab("anotar");openSaveFor({date:b.dataset.hsave,g:null})});
   $("streakCard").addEventListener("click",e=>{const b=e.target.closest("[data-hd]");if(!b)return;showTab("anotar");goDay(b.dataset.hd)});
 
@@ -1798,8 +1812,8 @@ export function startApp(env){
   // selector propio: buscador + lista (los más recientes primero)
   function progNames(){
     const last={};
-    entries.forEach(e=>{const k=e.date+String(1e15+(e.createdAt||0));if(!last[e.name]||k>last[e.name].k)last[e.name]={k,date:e.date,n:0}});
-    entries.forEach(e=>{last[e.name].n++});
+    entries.filter(isReal).forEach(e=>{const k=e.date+String(1e15+(e.createdAt||0));if(!last[e.name]||k>last[e.name].k)last[e.name]={k,date:e.date,n:0}});
+    entries.filter(isReal).forEach(e=>{last[e.name].n++});
     return Object.keys(last).sort((a,b)=>last[b].k.localeCompare(last[a].k)).map(n=>({n,date:last[n].date,count:last[n].n}));
   }
   function renderProgress(){
@@ -1827,7 +1841,7 @@ export function startApp(env){
   $("pickQ").addEventListener("keydown",e=>{if(e.key==="Escape")openPick(false);if(e.key==="Enter"){e.preventDefault();const b=$("pickList").querySelector("[data-pick]");if(b)b.click()}});
   $("pickList").addEventListener("click",e=>{const b=e.target.closest("[data-pick]");if(!b)return;picked=b.dataset.pick;openPick(false);renderProgress()});
   function drawChart(name){
-    const rows=entries.filter(e=>e.name===name);
+    const rows=entries.filter(e=>e.name===name&&isReal(e));
     const recent=rows.slice().sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt-a.createdAt).slice(0,8);
     $("plog").innerHTML='<h2 style="font-size:1rem;margin-top:8px">Últimos registros</h2>'+recent.map(e=>'<div class="entry"><div class="name"><span>'+esc(fmtShort(e.date))+'</span></div><div class="figs">'+figs(e)+'</div>'+(doneArr(e).some(Boolean)?'<div class="memo">Series: '+doneArr(e).map((d,i)=>d?pillLabel(e,d,i):"—").join("  ")+'</div>':'')+(e.memo?'<div class="memo">'+esc(e.memo)+'</div>':'')+'</div>').join("");
     let key=null,unit="";
@@ -1949,7 +1963,7 @@ export function startApp(env){
   $("catFilter").addEventListener("click",e=>{const b=e.target.closest("[data-cf]");if(!b)return;catFilter=b.dataset.cf;renderGrid()});
   // ---------- tendencia por ejercicio ----------
   function trendHTML(n){
-    const rows=entries.filter(e=>norm(e.name)===norm(n));if(!rows.length)return "";
+    const rows=entries.filter(e=>isReal(e)&&norm(e.name)===norm(n));if(!rows.length)return "";
     const k=rows.map(keyFor).find(Boolean);if(!k)return "";
     const per={};rows.forEach(r=>{const v=valOf(r,k);if(v!=null)per[r.date]=k==="best"?Math.min(per[r.date]??Infinity,v):Math.max(per[r.date]??-Infinity,v)});
     const pts=Object.keys(per).sort().slice(-10).map(d=>per[d]);if(!pts.length)return "";

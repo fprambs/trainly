@@ -879,3 +879,43 @@ body.det-open.resting .dwrap{padding-bottom:calc(200px + env(safe-area-inset-bot
 .fiacts{display:flex;gap:8px;flex-wrap:wrap}
 .fiacts .btnlike{min-height:48px;display:inline-flex;align-items:center;justify-content:center;flex:1 1 auto}
 .fiacts .solid{flex-basis:100%}
+/* calendario del historial */
+.calhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.calhead .iconbtn{width:44px;height:44px;font-size:1.5rem;display:flex;align-items:center;justify-content:center}
+.calhead .iconbtn:disabled{opacity:.3}
+.caltitle{font-family:var(--display);font-size:1.25rem;letter-spacing:.02em}
+.hcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.hcal .cdh{font-size:.7rem;font-weight:700;color:var(--muted);text-align:center;padding-bottom:2px}
+.hcal button{aspect-ratio:1/1;min-width:0;padding:0;border:0;border-radius:10px;background:var(--surface2);color:var(--ink);font-weight:600;font-size:.9rem;font-variant-numeric:tabular-nums;cursor:pointer}
+.hcal button.l1{background:color-mix(in srgb,var(--accent) 30%,var(--surface2))}
+.hcal button.l2{background:color-mix(in srgb,var(--accent) 62%,var(--surface2));color:var(--accent-ink)}
+.hcal button.l3{background:var(--accent);color:var(--accent-ink)}
+.hcal button.tdy{outline:2px solid var(--ink);outline-offset:1px;font-weight:800}
+.hcal button.fut{color:var(--muted);background:transparent}
+.hcal button.plan{box-shadow:inset 0 0 0 2px var(--accent);color:var(--accent);font-weight:700}
+.hlegend i.plan{background:transparent;box-shadow:inset 0 0 0 2px var(--accent)}
+/* uso en el gym: teclado abierto, pantallas cortas, toques rápidos */
+button,a,[role="button"],input,label{touch-action:manipulation}
+body.kb .tabs .in,body.kb .fab,body.kb .tetoca{display:none!important}
+body.kb .tabs .rest{margin-bottom:6px}
+.smacts{position:sticky;bottom:calc(-22px - env(safe-area-inset-bottom,0px));margin:0 -20px calc(-22px - env(safe-area-inset-bottom,0px));padding:12px 20px calc(14px + env(safe-area-inset-bottom,0px));background:var(--surface);box-shadow:0 -8px 16px -10px rgba(0,0,0,.25);z-index:2}
+.addcard #submitBtn{position:sticky;bottom:0;z-index:2;box-shadow:0 -10px 0 6px var(--surface)}
+@media (max-height:560px){
+  .smhead .smthumb,.grab{display:none}
+  .smsheet{gap:10px;padding-top:12px}
+  .smhead h2{font-size:1.35rem}
+  .smstep>button,.smbox,.smtime{height:48px}
+  .smstep>button{width:48px}
+  .smbox input,.smtime input{font-size:1.7rem}
+  .smdelta{padding:6px 10px;font-size:.82rem}
+  .fmedia{display:none}
+  .fdone{position:sticky;bottom:8px;min-height:60px}
+  .dmedia{height:150px}
+}
+/* encabezado más compacto en el celular */
+@media (max-width:480px){
+  .apphead h1{font-size:1.2rem}
+  .apphead .today{font-size:.8rem}
+  .daypick{min-height:48px}
+  .dp-main{font-size:1.25rem}
+}
