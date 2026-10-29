@@ -669,4 +669,4 @@ body.sheet-open{overflow:hidden}
   .athchip{max-width:240px}
 }
 
-.passwrap{position:relative}.passwrap input{width:100%;padding-right:78px}.passeye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--accent,#5B4FE6);font:600 14px/1 inherit;padding:8px 10px;cursor:pointer}
+.passwrap{position:relative}.passwrap input{width:100%;padding-right:48px}.passeye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--accent,#5B4FE6);padding:8px;line-height:0;cursor:pointer;border-radius:8px}.passeye svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
