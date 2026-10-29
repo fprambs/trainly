@@ -46,7 +46,7 @@ export function startApp(env){
   let athCoaches=[];       // ids de profesores de ese alumno
   let exRows=[],rutRows=[];
   const uuid=()=>(crypto.randomUUID?crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==="x"?r:(r&3|8)).toString(16)}));
-  const toEntry=r=>({id:r.id,date:r.date,name:r.name,sets:r.sets,reps:r.reps==null?null:+r.reps,weight:r.weight==null?null:+r.weight,mins:r.mins==null?null:+r.mins,dist:r.dist==null?null:+r.dist,memo:r.memo||"",order:r.ord,createdAt:r.created_ms==null?null:+r.created_ms,done:Array.isArray(r.done)?r.done:[]});
+  const toEntry=r=>({id:r.id,date:r.date,name:r.name,sets:r.sets,reps:r.reps==null?null:+r.reps,weight:r.weight==null?null:+r.weight,mins:r.mins==null?null:+r.mins,dist:r.dist==null?null:+r.dist,memo:r.memo||"",order:r.ord,createdAt:r.created_ms==null?null:+r.created_ms,done:Array.isArray(r.done)?r.done:[],circuit:!!r.circuit});
   const ENTRY_COLS={order:"ord",createdAt:"created_ms"};
   const toRowPatch=p=>{const o={};Object.keys(p).forEach(k=>{if(k==="id")return;o[ENTRY_COLS[k]||k]=p[k]});o.updated_at=new Date().toISOString();return o};
   // ---------- cola sin conexión ----------
@@ -64,7 +64,7 @@ export function startApp(env){
     });
     return m;
   }
-  const fromEntry=e=>({id:e.id,athlete_id:ath&&ath.id,date:e.date,name:e.name,sets:e.sets??null,reps:e.reps??null,weight:e.weight??null,mins:e.mins??null,dist:e.dist??null,memo:e.memo||"",ord:e.order??null,created_ms:e.createdAt??null,done:e.done||[]});
+  const fromEntry=e=>({id:e.id,athlete_id:ath&&ath.id,date:e.date,name:e.name,sets:e.sets??null,reps:e.reps??null,weight:e.weight??null,mins:e.mins??null,dist:e.dist??null,memo:e.memo||"",ord:e.order??null,created_ms:e.createdAt??null,done:e.done||[],circuit:!!e.circuit});
   function renderSync(){
     const n=outbox.length,el=$("syncNote");
     el.hidden=!n;
@@ -158,7 +158,7 @@ export function startApp(env){
     const rank=[me].concat(athCoaches);
     routines=rutRows.filter(r=>(ath&&r.athlete_id===ath.id)||(r.athlete_id==null&&rank.includes(r.owner_id)))
       .sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)))
-      .map(r=>({id:r.id,name:r.name,items:Array.isArray(r.items)?r.items:[],own:r.owner_id===me,ownerId:r.owner_id}));
+      .map(r=>({id:r.id,name:r.name,items:Array.isArray(r.items)?r.items:[],circuit:!!r.circuit,own:r.owner_id===me,ownerId:r.owner_id}));
   }
   const ownExRow=key=>exRows.find(x=>x.owner_id===me&&x.key===key);
   function putOwnEx(key,patch){
@@ -190,11 +190,11 @@ export function startApp(env){
         if(!p||!rutRows.some(x=>x.id===r.id)){
           const id=/^[0-9a-f-]{36}$/.test(r.id)?r.id:uuid();
           // el profesor guarda en su biblioteca (sirve para todos sus alumnos); el alumno, en su propio historial
-          const row={id,owner_id:me,athlete_id:env.isCoach()?null:ath.id,name:r.name,items:r.items};
+          const row={id,owner_id:me,athlete_id:env.isCoach()?null:ath.id,name:r.name,items:r.items,circuit:!!r.circuit};
           rutRows.push(Object.assign({created_at:new Date().toISOString()},row));bg({t:"ins",table:"routines",row});
-        }else if(p.name!==r.name||JSON.stringify(p.items)!==JSON.stringify(r.items)){
+        }else if(p.name!==r.name||!!p.circuit!==!!r.circuit||JSON.stringify(p.items)!==JSON.stringify(r.items)){
           if(p.own===false){toast("Esa rutina es de tu profesor: no la puedes modificar.");return}
-          const x=rutRows.find(z=>z.id===r.id);Object.assign(x,{name:r.name,items:r.items});bg({t:"upd",table:"routines",id:r.id,patch:{name:r.name,items:r.items}});
+          const x=rutRows.find(z=>z.id===r.id);Object.assign(x,{name:r.name,items:r.items,circuit:!!r.circuit});bg({t:"upd",table:"routines",id:r.id,patch:{name:r.name,items:r.items,circuit:!!r.circuit}});
         }
       });
       const ids=new Set(list.map(r=>r.id));
@@ -1070,11 +1070,24 @@ export function startApp(env){
       const v=ev.target.value;editing.draft[k]=v===""?null:Number(v)}
   });
 
+  // Siguiente serie: por defecto se termina el ejercicio en curso antes de pasar al siguiente.
+  // Los ejercicios cargados de una rutina en "circuito" se hacen por rondas (serie 1 de todos, luego serie 2…).
   function findNext(list){
     const withSets=list.filter(e=>e.sets>0);
     if(running){const re=withSets.find(e=>e.id===running.id);if(re&&!doneArr(re)[running.i])return{e:re,r:running.i}}
-    const maxS=Math.max(0,...withSets.map(e=>doneArr(e).length));
-    for(let r=0;r<maxS;r++)for(const e of withSets){const ds=doneArr(e);if(r<ds.length&&!ds[r])return{e,r}}
+    const pend=e=>doneArr(e).findIndex(d=>!d);
+    const circ=withSets.filter(e=>e.circuit);
+    const circNext=()=>{const maxS=Math.max(0,...circ.map(e=>doneArr(e).length));
+      for(let r=0;r<maxS;r++)for(const e of circ){const ds=doneArr(e);if(r<ds.length&&!ds[r])return{e,r}}return null};
+    // la serie marcada más recientemente es el ancla
+    let anchor=null,at=-1;
+    withSets.forEach(e=>doneArr(e).forEach(d=>{if(d&&d.at!=null&&d.at>at){at=d.at;anchor=e}}));
+    if(lastDone&&lastDone.t>=at){const x=withSets.find(e=>e.id===lastDone.id);if(x)anchor=x}
+    if(anchor){
+      if(anchor.circuit){const nx=circNext();if(nx)return nx}
+      else if(pend(anchor)>=0)return{e:anchor,r:pend(anchor)};
+    }
+    for(const e of withSets){if(pend(e)<0)continue;if(e.circuit){const nx=circNext();if(nx)return nx}return{e,r:pend(e)}}
     return null;
   }
   function ringSVG(done,total,size,stroke,inner){
@@ -1811,6 +1824,7 @@ export function startApp(env){
         '<div class="list rutbody">'+
         '<div class="hbar">'+(ed?'<input class="rutname" data-rname="'+esc(r.id)+'" value="'+esc(r.name)+'" aria-label="Nombre de la rutina">':'<span>'+(mus?'<span class="rutmus">'+mus+'</span>':'')+'</span>')+
         '<button type="button" class="'+(ed?'btnlike solid':'iconbtn hed')+'" data-redit="'+esc(r.id)+'" aria-label="'+(ed?'Terminar de editar':'Editar rutina')+'">'+(ed?"Listo":PENCIL)+'</button></div>'+
+        (ed?'<div class="rutmode" role="radiogroup" aria-label="Orden de las series"><span>Orden de las series</span><div><button type="button" role="radio" data-rcirc="0" data-rid="'+esc(r.id)+'" aria-checked="'+!r.circuit+'"><b>Por ejercicio</b><small>Todas las series de uno y luego el siguiente</small></button><button type="button" role="radio" data-rcirc="1" data-rid="'+esc(r.id)+'" aria-checked="'+!!r.circuit+'"><b>Circuito</b><small>Serie 1 de todos, luego serie 2…</small></button></div></div>':(r.circuit?'<p class="rutcirc">↻ En circuito: serie 1 de todos, luego serie 2…</p>':''))+
         '<div class="rutexs">'+rows+'</div>'+
         (ed?'<div class="rutfoot"><button type="button" class="dangerbtn" data-rtdel="'+esc(r.id)+'">'+TRASH+' Borrar rutina</button></div>':
           '<div class="rutloads"><button type="button" class="primary rutload" data-rtload="'+esc(r.id)+'" data-rd="'+today+'">Cargar hoy</button><button type="button" class="btnlike" data-rtpick="'+esc(r.id)+'" aria-expanded="'+(rutPick===r.id)+'">Otra fecha ▾</button></div>'+(rutPick===r.id?rutPickHTML(r.id):''))+
@@ -1826,6 +1840,7 @@ export function startApp(env){
         if(inp&&i>=0&&inp.value.trim()&&inp.value.trim()!==routines[i].name){const l=routines.slice();l[i]=Object.assign({},l[i],{name:inp.value.trim()});await store.setRoutines(l)}else renderRoutinesTab();return}
       rutEdit=id;renderRoutinesTab();return;
     }
+    if(b.dataset.rcirc!=null){const i=find(b.dataset.rid);if(i<0)return;const l=routines.slice();l[i]=Object.assign({},l[i],{circuit:b.dataset.rcirc==="1"});await store.setRoutines(l);return}
     if(b.dataset.rxdel!=null){const i=find(b.dataset.rid);if(i<0)return;const l=routines.slice(),r=Object.assign({},l[i]);r.items=r.items.filter((_,k)=>k!==+b.dataset.rxdel);l[i]=r;await store.setRoutines(l);return}
     if(b.dataset.rtdel){const i=find(b.dataset.rtdel);if(i<0)return;const r=routines[i];rutEdit=null;await store.setRoutines(routines.filter((_,k)=>k!==i));
       toast("Rutina borrada: "+r.name,false,{label:"Deshacer",fn:async()=>{await store.setRoutines(routines.concat([r]))}});return}
@@ -1834,7 +1849,7 @@ export function startApp(env){
   });
   async function loadRutOn(r,d){
     rutPick=null;
-    await addPlans(r.items,"“"+r.name+"”"+(d===today?"":" para el "+fmtDay(d)),d);
+    await addPlans(r.items,"“"+r.name+"”"+(d===today?"":" para el "+fmtDay(d)),d,r.circuit);
     showTab("anotar");goDay(d);
   }
   $("rutList").addEventListener("change",e=>{const id=e.target.dataset&&e.target.dataset.rtdate;if(!id||!e.target.value)return;const r=routines.find(x=>x.id===id);if(r)loadRutOn(r,e.target.value)});
@@ -1863,9 +1878,9 @@ export function startApp(env){
   function nextRoutineName(){let n=routines.length+1;while(routines.some(r=>norm(r.name)===norm("Día "+n)))n++;return "Día "+n}
   function openSaveFor(src){saveSrc=src;renderLoadBox();$("repeatBox").hidden=false;$("rName").value=nextRoutineName();setTimeout(()=>{$("rName").focus();$("rName").select();$("rSave").scrollIntoView({block:"center",behavior:"smooth"})},30)}
   $("repeatBtn").addEventListener("click",()=>{const box=$("repeatBox");if(!box.hidden){box.hidden=true;saveSrc=null;return}saveSrc=null;renderLoadBox();box.hidden=false});
-  async function addPlans(items,label,date){
+  async function addPlans(items,label,date,circuit){
     const d=date||$("date").value||today;let n=0;const base=Date.now();
-    try{for(const it of items){await store.add(Object.assign(planOf(it),{date:d,memo:"",createdAt:base+n}));n++}
+    try{for(const it of items){await store.add(Object.assign(planOf(it),{date:d,memo:"",createdAt:base+n,circuit:!!circuit}));n++}
       $("repeatBox").hidden=true;toast((n===1?"Cargado 1 ejercicio":"Cargados "+n+" ejercicios")+" de "+label);}
     catch(err){toast("Se cargaron "+n+" de "+items.length+". Inténtalo de nuevo para el resto.")}
   }
@@ -1883,7 +1898,7 @@ export function startApp(env){
       if(ex>=0)list[ex]=Object.assign(r,{id:routines[ex].id});else list.push(r);
       await store.setRoutines(list);toast((ex>=0?"Rutina actualizada: ":"Rutina guardada: ")+name);renderLoadBox();return;
     }
-    if(b.dataset.rload!=null){const r=routines[+b.dataset.rload];if(!r)return;b.disabled=true;await addPlans(r.items,"“"+r.name+"”");return}
+    if(b.dataset.rload!=null){const r=routines[+b.dataset.rload];if(!r)return;b.disabled=true;await addPlans(r.items,"“"+r.name+"”",null,r.circuit);return}
     if(b.dataset.rdel!=null){
       const ri=+b.dataset.rdel,r=routines[ri];if(!r)return;
       await store.setRoutines(routines.filter((_,k)=>k!==ri));renderLoadBox();

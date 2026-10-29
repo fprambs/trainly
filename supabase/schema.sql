@@ -394,3 +394,7 @@ end $$;
 drop trigger if exists exercises_skip_bank on public.exercises;
 create trigger exercises_skip_bank before insert or update on public.exercises
   for each row execute function public.skip_bank_shadow();
+
+-- orden de las series: false = por ejercicio (default), true = circuito por rondas
+alter table public.routines add column if not exists circuit boolean not null default false;
+alter table public.entries add column if not exists circuit boolean not null default false;
