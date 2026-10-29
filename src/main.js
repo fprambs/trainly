@@ -16,19 +16,17 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
 // ---------- aviso de versión nueva: la app instalada puede quedar abierta días con el código viejo ----------
 if (import.meta.env.PROD) {
   const myScript = () => { const s = document.querySelector('script[type="module"][src*="/assets/"]'); return s ? new URL(s.src, location.href).pathname : null; };
-  let lastCheck = 0;
+  let lastCheck = 0, dismissed = false;
+  $("updBtn").onclick = () => location.reload();
+  $("updX").onclick = () => { dismissed = true; $("updBar").hidden = true; setTimeout(() => { dismissed = false; }, 30 * 60e3); };
   async function checkUpdate() {
-    if (Date.now() - lastCheck < 60e3 || $("updBtn")) return;
+    if (Date.now() - lastCheck < 60e3 || !$("updBar").hidden) return;
     lastCheck = Date.now();
     try {
       const html = await (await fetch("/", { cache: "no-store" })).text();
       const m = html.match(/\/assets\/index-[\w-]+\.js/), cur = myScript();
-      if (m && cur && m[0] !== cur) {
-
-        const t = $("toast");
-        t.innerHTML = 'Hay una versión nueva de la app <button type="button" id="updBtn" class="btnlike">Actualizar</button>';
-        t.hidden = false; t.style.bottom = "";
-        $("updBtn").onclick = () => location.reload();
+      if (m && cur && m[0] !== cur && !dismissed) {
+        $("updBar").hidden = false;
       }
     } catch (e) {}
   }
