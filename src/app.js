@@ -1728,7 +1728,7 @@ export function startApp(env){
         }
       }
     }catch(e){
-      if(opts.manual)toast(e&&e.code==="rate_limited"?"Hay muchas consultas seguidas. Inténtalo en un momento.":e&&e.code==="not_granted"?"La IA no está disponible ahora.":"No se pudo clasificar ahora. Inténtalo de nuevo.");
+      if(opts.manual)toast(e&&e.code==="rate_limited"?"Hay muchas consultas seguidas. Inténtalo en un momento.":e&&e.code==="not_granted"?"La IA no está disponible ahora"+(e.message?": "+e.message:"."):"No se pudo clasificar ahora"+(e&&e.message?" ("+e.message+")":"")+".");
     }finally{classifying=false;renderCatAI()}
     return done;
   }
@@ -1881,7 +1881,7 @@ export function startApp(env){
           '<div><button type="button" class="btnlike solid">'+esc(useLabel)+'</button></div></div>';
         out.querySelector("button").onclick=()=>{$(P+"Box").hidden=true;$(P+"Desc").value="";out.innerHTML="";onUse(r)};
       }catch(e){
-        out.innerHTML='<p class="hint">'+(e&&e.code==="rate_limited"?"Hay muchas consultas seguidas. Espera un momento.":e&&e.code==="not_granted"?"La IA no está disponible ahora.":"No se pudo consultar ahora. Inténtalo de nuevo.")+'</p>';
+        out.innerHTML='<p class="hint">'+(e&&e.code==="rate_limited"?"Hay muchas consultas seguidas. Espera un momento.":e&&e.code==="not_granted"?"La IA no está disponible ahora"+(e.message?": "+esc(e.message):"."):"No se pudo consultar ahora. Inténtalo de nuevo."+(e&&e.message?"<br><small>"+esc(e.message)+"</small>":""))+'</p>';
       }finally{btn.disabled=false;btn.textContent="Identificar"}
     });
   }
@@ -1918,7 +1918,7 @@ export function startApp(env){
       const text=await sampler.analyze(payload,{signal:aiCtl.signal});out.innerHTML=mdLite(text);
     }catch(e){
       if(e&&e.name==="AbortError")return;
-      out.innerHTML='<p class="hint">'+(e&&e.code==="rate_limited"?"Hay muchas consultas seguidas. Espera un momento.":e&&e.code==="not_granted"?"La IA no está disponible ahora.":"No se pudo completar el análisis. Inténtalo de nuevo.")+'</p>';
+      out.innerHTML='<p class="hint">'+(e&&e.code==="rate_limited"?"Hay muchas consultas seguidas. Espera un momento.":e&&e.code==="not_granted"?"La IA no está disponible ahora"+(e.message?": "+esc(e.message):"."):"No se pudo completar el análisis. Inténtalo de nuevo."+(e&&e.message?"<br><small>"+esc(e.message)+"</small>":""))+'</p>';
     }finally{btn.disabled=false;btn.textContent="Analizar de nuevo"}
   });
 

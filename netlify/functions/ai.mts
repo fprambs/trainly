@@ -14,7 +14,7 @@ const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 const busy = () => { const err: any = new Error("La IA está ocupada, intenta en un momento"); err.status = 429; return err; };
 
 async function groq(prompt: string, asJson: boolean): Promise<string> {
-  const key = Netlify.env.get("GROQ_API_KEY");
+  const key = (Netlify.env.get("GROQ_API_KEY") || "").trim().replace(/^["']|["']$/g, "");
   const model = Netlify.env.get("GROQ_MODEL") || "llama-3.3-70b-versatile";
   const body: any = {
     model,
@@ -31,7 +31,11 @@ async function groq(prompt: string, asJson: boolean): Promise<string> {
     });
     if (r.status === 429 || r.status === 503) { await sleep(1500 * (attempt + 1)); continue; }
     const data: any = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data?.error?.message || `Groq ${r.status}`);
+    const msg = data?.error?.message || `Groq ${r.status}`;
+    if (r.status === 401 || r.status === 403) { const err: any = new Error("La clave de Groq no es válida (revisa GROQ_API_KEY en Netlify)"); err.status = 503; throw err; }
+    // si el modelo no logró armar JSON válido, reintentar sin modo JSON (parseJson lo rescata)
+    if (r.status === 400 && body.response_format && /json/i.test(msg)) { delete body.response_format; continue; }
+    if (!r.ok) { console.error("groq error", r.status, msg); throw new Error("Groq: " + msg); }
     return data?.choices?.[0]?.message?.content || "";
   }
   throw busy();
