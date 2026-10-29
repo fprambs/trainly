@@ -1015,3 +1015,14 @@ body.kb .tabs .rest{margin-bottom:6px}
 .fimedia,.dmedia,.fmedia{height:auto!important;max-height:none!important;width:100%}
 /* las ventanas con scroll no deben aplastar su contenido (el video quedaba bajito con franjas a los lados) */
 .smsheet>*,.dwrap>*,.addcard>*{flex-shrink:0}
+/* gráfico de la ficha con ejes */
+.trend{width:100%;gap:6px;padding:12px;border-radius:14px;background:var(--surface2);align-items:stretch}
+.trh{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.trh b{font-family:var(--body);font-size:.9rem;color:var(--ink)}
+.trh span{font-size:.78rem}
+.trend svg{width:100%;height:auto;overflow:visible}
+.trend .tg{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3}
+.trend .tax{stroke:var(--muted);stroke-width:1}
+.trend .tyl,.trend .txl{fill:var(--muted);font-size:10px;font-family:var(--body)}
+.trf{font-size:.82rem}
+.trf b{font-family:var(--display);font-size:1rem}
