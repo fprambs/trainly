@@ -668,3 +668,5 @@ body.sheet-open{overflow:hidden}
   .tabs .in{max-width:760px}
   .athchip{max-width:240px}
 }
+
+.passwrap{position:relative}.passwrap input{width:100%;padding-right:78px}.passeye{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--accent,#5B4FE6);font:600 14px/1 inherit;padding:8px 10px;cursor:pointer}

@@ -35,8 +35,8 @@
     </div>
     <form id="authForm" autocomplete="on" novalidate>
       <div class="f" id="aNameRow" hidden><label for="aName">Tu nombre</label><input id="aName" autocomplete="name" placeholder="Ej: Sofía"></div>
-      <div class="f"><label for="aEmail">Email</label><input id="aEmail" type="email" autocomplete="email" inputmode="email" placeholder="tu@email.com" required></div>
-      <div class="f"><label for="aPass">Contraseña</label><input id="aPass" type="password" autocomplete="current-password" minlength="6" placeholder="Mínimo 6 caracteres" required></div>
+      <div class="f"><label for="aEmail">Email</label><input id="aEmail" type="email" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="email" inputmode="email" placeholder="tu@email.com" required></div>
+      <div class="f"><label for="aPass">Contraseña</label><div class="passwrap"><input id="aPass" type="password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" minlength="6" placeholder="Mínimo 6 caracteres" required><button type="button" id="aShow" class="passeye" aria-label="Mostrar contraseña">Ver</button></div></div>
       <fieldset class="roles" id="aRoleRow" hidden>
         <legend>¿Cómo vas a usarla?</legend>
         <label class="rolecard"><input type="radio" name="role" value="athlete" checked><b>Entreno</b><span>Anoto mis sesiones. Puedo tener profesor o entrenar solo.</span></label>

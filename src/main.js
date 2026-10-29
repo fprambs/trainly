@@ -54,7 +54,7 @@ function niceAuthError(e) {
 }
 $("authForm").addEventListener("submit", async ev => {
   ev.preventDefault();
-  const email = $("aEmail").value.trim(), password = $("aPass").value;
+  const email = $("aEmail").value.trim().toLowerCase(), password = $("aPass").value;
   if (!email || !password) { authMsg("Completa email y contraseña."); return; }
   const btn = $("authGo"); btn.disabled = true; authMsg("");
   try {
@@ -72,6 +72,7 @@ $("authForm").addEventListener("submit", async ev => {
   } catch (e) { authMsg(niceAuthError(e)); }
   btn.disabled = false;
 });
+$("aShow").onclick = () => { const i = $("aPass"), show = i.type === "password"; i.type = show ? "text" : "password"; $("aShow").textContent = show ? "Ocultar" : "Ver"; };
 $("aForgot").onclick = async () => {
   const email = $("aEmail").value.trim();
   if (!email) { authMsg("Escribe tu email arriba y vuelve a tocar aquí."); return; }
