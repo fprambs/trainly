@@ -1224,3 +1224,7 @@ label.ps small{font-weight:600;opacity:.8;text-transform:none;letter-spacing:0}
 .duox{font-size:.7rem;font-weight:800;margin-left:-3px;letter-spacing:0}
 label.ps{white-space:nowrap}
 .sidepill .duox{font-size:.72rem;font-family:var(--body)}
+
+/* Agregar: el botón fijo no tapa el último campo */
+.addcard #submitBtn{margin-top:22px}
+.addcard{scroll-padding-bottom:110px}
