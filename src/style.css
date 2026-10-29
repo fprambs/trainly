@@ -1228,3 +1228,7 @@ label.ps{white-space:nowrap}
 /* Agregar: el botón fijo no tapa el último campo */
 .addcard #submitBtn{margin-top:22px}
 .addcard{scroll-padding-bottom:110px}
+/* pantalla completa de la imagen/video: caja 16:9 fija desde el inicio (antes el video cambiaba de tamaño al cargar y parpadeaba) */
+.lb img,.lb video{width:min(100%,calc(74vh * 16 / 9));max-height:74vh;aspect-ratio:16/9;height:auto;object-fit:contain;background:var(--media,#fff)}
+.lb:not([hidden]){animation:lbin .16s ease-out}
+@keyframes lbin{from{opacity:0}}
