@@ -82,14 +82,16 @@
       <h2 id="todayTitle">Ejercicios</h2>
       <div class="thbtns">
         <button type="button" class="btnlike solid" id="sumBtn" hidden>Resumen</button>
-        <button type="button" class="btnlike" id="repeatBtn" hidden>Cargar o guardar rutina</button>
+        <button type="button" class="btnlike" id="repeatBtn" hidden>Rutina</button>
       </div>
     </div>
     <div class="card repeat" id="repeatBox" hidden></div>
 
-    <button type="button" class="addopen" id="addOpen" aria-expanded="false" aria-controls="addCard"><span aria-hidden="true">+</span> Agregar ejercicio</button>
-    <div class="card addcard" id="addCard" hidden>
-      <div class="addhead"><div><h2>Agregar ejercicio</h2><p class="addfor" id="addFor"></p></div><button type="button" class="iconbtn" id="addClose" aria-label="Cerrar">✕</button></div>
+    <button type="button" class="fab" id="addOpen" aria-expanded="false" aria-controls="addCard" aria-label="Agregar ejercicio"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+    <div class="addback" id="addBack" hidden></div>
+    <div class="card addcard" id="addCard" role="dialog" aria-modal="true" aria-labelledby="addTitle" hidden>
+      <div class="grab" aria-hidden="true"></div>
+      <div class="addhead"><div><h2 id="addTitle">Agregar ejercicio</h2><p class="addfor" id="addFor"></p></div><button type="button" class="iconbtn" id="addClose" aria-label="Cerrar">✕</button></div>
       <form id="form" autocomplete="off">
         <div class="f w4 combo"><label for="name">Ejercicio</label>
           <div class="namerow">
@@ -142,7 +144,8 @@
       <summary>¿Qué significan los colores?</summary>
       <div><span><i class="lo"></i>✓ Como se pidió</span><span><i class="lu"></i>↑ Subiste o mejoraste</span><span><i class="ld"></i>↓ Bajaste</span><span><b>1RM est.</b> Con peso y reps, la serie se juzga por fuerza: 30 kg × 10 vale más que 20 kg × 15. Lo que bajó a cambio queda en gris.</span><span><b>≈</b> Misma fuerza con otra combinación</span><span><b>↑↓</b> Subiste en algo y bajaste en otro (ejercicios sin peso)</span><span>Se colorea solo el valor que cambió, con lo pedido tachado al lado. Si no se pidió ese valor, se compara con la serie anterior (ej. “S1 20”). Toca una serie para corregirla.</span><span>Para cambiar el orden, mantén presionado un ejercicio y arrástralo.</span></div>
     </details>
-    <div class="card" id="todayList"></div>
+    <div class="emptyday" id="emptyDay" hidden><p><b>Aún no hay ejercicios este día.</b><br>Toca <b>+</b> para agregar uno o carga una rutina.</p><div><button type="button" class="btnlike solid" id="emptyAdd">Agregar ejercicio</button><button type="button" class="btnlike" id="emptyRut">Cargar rutina</button></div></div>
+    <div class="tlist" id="todayList"></div>
   </section>
 
   <!-- RUTINAS -->
@@ -186,12 +189,13 @@
   <!-- EJERCICIOS -->
   <section class="tab" id="tab-ejercicios" role="tabpanel" aria-labelledby="t-ejercicios" hidden>
     <div>
-      <h2>Mis ejercicios <span id="catCount" style="color:var(--muted)"></span></h2>
+      <h2>Ejercicios <span id="catCount" style="color:var(--muted)"></span></h2>
+      <div class="exsegs" id="exSegs" role="tablist" aria-label="Origen de los ejercicios"></div>
       <div class="card catcard">
-        <label for="catNew">Buscar o agregar ejercicio</label>
+        <label for="catNew">Buscar o crear un ejercicio tuyo</label>
         <div class="catadd">
           <input id="catNew" placeholder="Ej: peso muerto rumano" autocomplete="off">
-          <button type="button" class="btnlike solid" id="catNewBtn" disabled>Agregar</button>
+          <button type="button" class="btnlike solid" id="catNewBtn" disabled>Crear</button>
         </div>
         <p class="hint" id="catHint"></p>
         <div id="catIdRow" hidden>
@@ -226,6 +230,9 @@
 </div>
 
 <div class="toast" id="toast" role="status" hidden></div>
+<div class="exdet" id="exDet" hidden role="dialog" aria-modal="true" aria-labelledby="detName"></div>
+<div class="smov" id="fichaOv" hidden><div class="smsheet ficha" id="ficha" role="dialog" aria-modal="true" aria-labelledby="fichaName"></div></div>
+<div class="smov" id="smOv" hidden><div class="smsheet" id="setModal" role="dialog" aria-modal="true" aria-labelledby="smTitle"></div></div>
 <div class="focus" id="focus" hidden role="dialog" aria-modal="true" aria-label="Modo entrenamiento"></div>
 <div class="sumov" id="sumOv" hidden role="dialog" aria-modal="true" aria-labelledby="sumTitle">
   <div class="sumcard" id="sumCard"></div>
@@ -237,6 +244,7 @@
   <div class="sumprev" id="sumPrev" hidden><p class="sumhint">Mantén presionada la imagen para guardarla o compartirla</p><img id="sumPrevImg" alt="Resumen de la sesión"></div>
 </div>
 <nav class="tabs" aria-label="Secciones">
+  <div class="tetoca" id="teToca" hidden></div>
   <div class="rest" id="rest" hidden>
     <div class="rtop">
       <div class="rinfo"><small id="rLabel">Descanso</small><button type="button" class="rtbtn" id="rTimeBtn" aria-expanded="false" aria-controls="rPre" title="Cambiar el descanso de este ejercicio"><b id="rTime" class="num">1:30</b><span>cambiar ▾</span></button><span class="awake" id="rAwake" hidden>Pantalla encendida</span></div>
@@ -247,10 +255,11 @@
       </div>
     </div>
     <div class="rbar"><i id="rFill"></i></div>
+    <p class="rnext" id="rNext" hidden></p>
     <div class="rpre" id="rPre" hidden><span>Descanso de este ejercicio</span><div id="rPresets"></div></div>
   </div>
   <div class="in" role="tablist">
-    <button type="button" role="tab" id="t-anotar" data-tab="anotar" aria-controls="tab-anotar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></svg>Sesión</button>
+    <button type="button" role="tab" id="t-anotar" data-tab="anotar" aria-controls="tab-anotar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></svg>Hoy</button>
     <button type="button" role="tab" id="t-rutinas" data-tab="rutinas" aria-controls="tab-rutinas"><svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>Rutinas</button>
     <button type="button" role="tab" id="t-historial" data-tab="historial" aria-controls="tab-historial"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Historial</button>
     <button type="button" role="tab" id="t-progreso" data-tab="progreso" aria-controls="tab-progreso"><svg viewBox="0 0 24 24"><path d="M4 19l5-6 4 3 7-9"/><path d="M15 7h5v5"/></svg>Progreso</button>
