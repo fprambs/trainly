@@ -976,3 +976,4 @@ body.kb .tabs .rest{margin-bottom:6px}
 .adminbox .rowin{display:flex;gap:6px}
 .adminbox .rowin input{flex:1;min-width:0;min-height:44px;border-radius:10px;border:1px solid var(--line);padding:0 10px;font-size:16px;background:var(--surface);color:var(--ink)}
 .adminbox .hint{margin:0;font-size:.78rem}
+.adminbox .f input{min-height:46px;border-radius:10px;border:1px solid var(--line);padding:0 12px;font-size:16px;background:var(--surface);color:var(--ink)}
