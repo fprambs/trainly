@@ -23,7 +23,7 @@ if (import.meta.env.PROD) {
     if (Date.now() - lastCheck < 60e3 || !$("updBar").hidden) return;
     lastCheck = Date.now();
     try {
-      const html = await (await fetch("/", { cache: "no-store" })).text();
+      const html = await (await fetch("/?_v=" + Date.now(), { cache: "no-store" })).text();
       const m = html.match(/\/assets\/index-[\w-]+\.js/), cur = myScript();
       if (m && cur && m[0] !== cur && !dismissed) {
         $("updBar").hidden = false;

@@ -1477,7 +1477,7 @@ export function startApp(env){
 
   // ---------- resumen para compartir ----------
   let sumState=null; // {date,gi}
-  const LOGO_SVG='<svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="12" fill="var(--accent-ink)" fill-opacity=".18"/><g fill="var(--accent-ink)"><rect x="8" y="15" width="6" height="18" rx="2"/><rect x="34" y="15" width="6" height="18" rx="2"/><rect x="4" y="19" width="4" height="10" rx="1.5"/><rect x="40" y="19" width="4" height="10" rx="1.5"/><rect x="14" y="22" width="20" height="4" rx="1"/></g></svg>';
+  const LOGO_SVG='<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><g fill="var(--accent-ink)" transform="translate(0 22)"><rect x="96" y="116" width="34" height="104" rx="10"/><rect x="138" y="92" width="40" height="152" rx="12"/><rect x="176" y="150" width="160" height="36" rx="6"/><rect x="334" y="92" width="40" height="152" rx="12"/><rect x="382" y="116" width="34" height="104" rx="10"/><rect x="225" y="170" width="62" height="205" rx="22"/></g></svg>';
   function fmtClock(ms){const t=Math.max(0,Math.round(ms/1000)),h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;return h?h+":"+pad(m)+":"+pad(sec):m+":"+pad(sec)}
   function sumGroup(){
     const list=entries.filter(e=>e.date===sumState.date).sort(byCreated);
@@ -1510,13 +1510,13 @@ export function startApp(env){
         '<span class="sinfo"><b>'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★ Récord</span>':'')+'</b><span>'+esc(detail)+'</span></span>'+
         '<span class="sside">'+(ds.length?'<b class="'+(pend?"pend":"ok")+'">'+hechas.length+'/'+ds.length+(pend?"":" ✓")+'</b>':'')+(best?'<small>1RM '+fmtN(r1(best))+' kg</small>':'')+'</span></div>';
     }).join("");
-    card.innerHTML='<div class="sh"><div class="shtop">'+LOGO_SVG+'<div><b id="sumTitle">Bitácora de entreno</b><span>'+esc(dayTxt)+(groups.length>1?" · "+esc(sessLabel(g).split(" · ")[0]):"")+'</span></div></div>'+
+    card.innerHTML='<div class="sh"><div class="shtop">'+LOGO_SVG+'<div><b id="sumTitle">Trainly</b><span>'+esc(dayTxt)+(groups.length>1?" · "+esc(sessLabel(g).split(" · ")[0]):"")+'</span></div></div>'+
       '<button type="button" class="shx" data-sum="close" aria-label="Cerrar">✕</button>'+
       '<div class="durrow"><div class="dur"><b id="sumDur">'+(durMs!=null?fmtClock(durMs):"—")+'</b><small>'+(live?'<span class="live"><i></i>En curso</span> · desde '+startTxt:durMs!=null?"Duración · desde "+startTxt:"Sin series marcadas")+'</small></div>'+ringSVG(done,total,84,8,'<span style="font-size:1.25rem">'+done+'<small>/'+total+'</small></span>')+'</div></div>'+
       (groups.length>1?'<div class="stabs">'+groups.map((x,k)=>'<button type="button" data-sg="'+k+'" aria-pressed="'+(k===gi)+'">'+esc(sessLabel(x).split(" · ")[0])+'</button>').join("")+'</div>':'')+
       '<div class="sgrid"><div><b>'+g.entries.length+'</b><small>'+(g.entries.length===1?"ejercicio":"ejercicios")+'</small></div><div><b>'+done+'<span style="font-size:.9rem;color:var(--muted)">/'+total+'</span></b><small>series</small></div><div><b>'+Math.round(vol).toLocaleString("es-CL")+'</b><small>kg volumen</small></div><div class="gold"><b>'+prs+'</b><small>★ récords</small></div></div>'+
       '<div class="slist">'+rows+'</div>'+
-      '<div class="sfoot"><span>Bitácora de entreno</span><span>'+esc(parse(d).toLocaleDateString("es-CL",{day:"numeric",month:"short",year:"numeric"}))+'</span></div>';
+      '<div class="sfoot"><span>Trainly</span><span>'+esc(parse(d).toLocaleDateString("es-CL",{day:"numeric",month:"short",year:"numeric"}))+'</span></div>';
     card.dataset.live=live?"1":"";card.dataset.start=g.start||"";
   }
   function sumData(){
@@ -1639,7 +1639,7 @@ export function startApp(env){
       if(i<rows.length-1){ctx.fillStyle=C.line;ctx.fillRect(P,y,W-P*2,2)}
     });
     y=H-FOOT;ctx.fillStyle=C.bg2;ctx.fillRect(0,y,W,FOOT);ctx.fillStyle=C.line;ctx.fillRect(0,y,W,2);
-    ctx.fillStyle=C.muted;ctx.font="500 26px "+BODY;ctx.fillText("Bitácora de entreno",P,y+58);ctx.textAlign="right";ctx.fillText(D.foot,W-P,y+58);ctx.textAlign="left";
+    ctx.fillStyle=C.muted;ctx.font="500 26px "+BODY;ctx.fillText("Trainly",P,y+58);ctx.textAlign="right";ctx.fillText(D.foot,W-P,y+58);ctx.textAlign="left";
     return await new Promise((res,rej)=>{try{cv.toBlob(b=>b?res(b):rej(new Error("blob")),"image/png")}catch(e){rej(e)}});
   }
   $("sumImg").addEventListener("click",async()=>{
@@ -2245,7 +2245,7 @@ export function startApp(env){
   }
   $("backupBtn").addEventListener("click",async()=>{
     if(!downloads)return;
-    try{await downloads.save({filename:"bitacora-entreno-"+today+".csv",data:buildCSV()});toast("Respaldo descargado")}
+    try{await downloads.save({filename:"trainly-"+today+".csv",data:buildCSV()});toast("Respaldo descargado")}
     catch(e){if(e&&e.code==="declined")return;if(e&&e.code==="rate_limited"){toast("Espera un momento e inténtalo de nuevo.");return}toast("No se pudo descargar el respaldo aquí.")}
   });
 

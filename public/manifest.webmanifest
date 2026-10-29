@@ -1,7 +1,8 @@
 {
-  "name": "Bitácora de Entreno",
-  "short_name": "Entreno",
-  "description": "Anota tus series, sigue tu progreso y entrena con tu profesor.",
+  "name": "Trainly",
+  "short_name": "Trainly",
+  "id": "/",
+  "description": "Tu bitácora de entrenamiento. Anota tus series, sigue tu progreso y entrena con tu profesor.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
