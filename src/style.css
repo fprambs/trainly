@@ -922,7 +922,7 @@ body.kb .tabs .rest{margin-bottom:6px}
 /* historial compacto */
 .hcompact{display:flex;flex-direction:column;gap:6px;padding:2px 14px 8px}
 .hbar{display:flex;align-items:center;gap:6px;padding:2px 0 6px;border-bottom:1px solid var(--line)}
-.hbar span{flex:1;font-size:.85rem;color:var(--muted);font-weight:600}
+.hbar>span{flex:1;min-width:0;font-size:.85rem;color:var(--muted);font-weight:600}
 .hbar .iconbtn{width:40px;height:40px;display:flex;align-items:center;justify-content:center}
 .hbar .iconbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .hbar .btnlike{min-height:38px;padding:4px 14px}
@@ -942,3 +942,11 @@ body.kb .tabs .rest{margin-bottom:6px}
 .hs.miss{background:transparent;color:var(--muted);font-weight:500}
 .hs.plan{background:var(--surface2);color:var(--muted)}
 .hmemo{display:block;font-size:.78rem;color:var(--muted);font-style:italic;margin-top:2px}
+/* rutinas colapsables (como los días del historial) */
+.rutlist{gap:10px}
+.rutbody{display:flex;flex-direction:column;gap:10px;padding-top:2px}
+.rutbody .hbar .rutmus{display:flex;flex-wrap:wrap;gap:4px}
+.rutbody .hbar .rutname{flex:1;min-width:0;font-size:1rem;padding:8px 10px;border-radius:10px;border:1.5px solid var(--accent)}
+.rutbody .rutload{margin-top:2px}
+.hed svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.rutbody .hbar{border-bottom:0;padding-bottom:0}

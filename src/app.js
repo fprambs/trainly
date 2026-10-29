@@ -1627,6 +1627,7 @@ export function startApp(env){
   const planOf=e=>({name:e.name,sets:e.sets??null,reps:e.reps??null,weight:e.weight??null,mins:e.mins??null,dist:e.dist??null});
   // ---------- pestaña Rutinas ----------
   let rutEdit=null;
+  const openRuts=new Set();
   function renderRoutinesTab(){
     const box=$("rutList"),d=$("date").value||today;
     const tgt=d===today?"hoy":parse(d).toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
@@ -1641,14 +1642,15 @@ export function startApp(env){
           '<div><b>'+esc(it.name)+'</b><span>'+esc((it.sets?it.sets+(it.sets==1?" serie":" series"):"")+(planText(it)?(it.sets?" · ":"")+planText(it):""))+'</span></div>'+
           (ed?'<button type="button" class="iconbtn" data-rxdel="'+ii+'" data-rid="'+esc(r.id)+'" aria-label="Quitar '+esc(it.name)+' de la rutina">✕</button>':'')+'</div>'}).join("");
       const mus=[...new Set(r.items.map(it=>catOf(it.name)))].filter(c=>c!=="otro").map(c=>'<span class="catchip"><span class="catdot" style="background:'+CATMAP[c][2]+'"></span>'+CATMAP[c][1]+'</span>').join("");
-      return '<div class="card rutcard">'+
-        '<div class="ruthead">'+(ed?'<input class="rutname" data-rname="'+esc(r.id)+'" value="'+esc(r.name)+'" aria-label="Nombre de la rutina">':'<div><h3>'+esc(r.name)+'</h3><span class="hint">'+r.items.length+(r.items.length===1?" ejercicio":" ejercicios")+'</span></div>')+
-        '<button type="button" class="btnlike" data-redit="'+esc(r.id)+'">'+(ed?"Listo":"Editar")+'</button></div>'+
-        (mus?'<div class="rutmus">'+mus+'</div>':'')+
+      const names=r.items.map(it=>it.name).join(" · ");
+      return '<details class="day rutday" data-rut="'+esc(r.id)+'"'+(ed||openRuts.has(r.id)?' open':'')+'><summary><h3>'+esc(r.name)+'</h3><span class="cnt">'+r.items.length+(r.items.length===1?" ejercicio":" ejercicios")+'</span><span class="names">'+esc(names)+'</span></summary>'+
+        '<div class="list rutbody">'+
+        '<div class="hbar">'+(ed?'<input class="rutname" data-rname="'+esc(r.id)+'" value="'+esc(r.name)+'" aria-label="Nombre de la rutina">':'<span>'+(mus?'<span class="rutmus">'+mus+'</span>':'')+'</span>')+
+        '<button type="button" class="'+(ed?'btnlike solid':'iconbtn hed')+'" data-redit="'+esc(r.id)+'" aria-label="'+(ed?'Terminar de editar':'Editar rutina')+'">'+(ed?"Listo":PENCIL)+'</button></div>'+
         '<div class="rutexs">'+rows+'</div>'+
         (ed?'<div class="rutfoot"><button type="button" class="dangerbtn" data-rtdel="'+esc(r.id)+'">'+TRASH+' Borrar rutina</button></div>':
           '<button type="button" class="primary rutload" data-rtload="'+esc(r.id)+'">Cargar en '+esc(tgt)+'</button>')+
-        '</div>';
+        '</div></details>';
     }).join("");
   }
   $("rutList").addEventListener("click",async e=>{
@@ -1665,6 +1667,7 @@ export function startApp(env){
       toast("Rutina borrada: "+r.name,false,{label:"Deshacer",fn:async()=>{await store.setRoutines(routines.concat([r]))}});return}
     if(b.dataset.rtload){const r=routines[find(b.dataset.rtload)];if(!r)return;b.disabled=true;await addPlans(r.items,"“"+r.name+"”");showTab("anotar");renderToday()}
   });
+  $("rutList").addEventListener("toggle",e=>{const d=e.target.closest&&e.target.closest(".rutday");if(!d)return;d.open?openRuts.add(d.dataset.rut):openRuts.delete(d.dataset.rut)},true);
   $("rutList").addEventListener("keydown",e=>{if(e.target.dataset&&e.target.dataset.rname&&e.key==="Enter"){e.preventDefault();const b=document.querySelector('[data-redit="'+e.target.dataset.rname+'"]');if(b)b.click()}});
 
   function renderLoadBox(){
