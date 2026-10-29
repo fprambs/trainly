@@ -1762,6 +1762,32 @@ export function startApp(env){
   $("history").addEventListener("click",e=>{const b=e.target.closest("[data-hsave]");if(!b)return;showTab("anotar");openSaveFor({date:b.dataset.hsave,g:null})});
   $("streakCard").addEventListener("click",e=>{const b=e.target.closest("[data-hd]");if(!b)return;showTab("anotar");goDay(b.dataset.hd)});
 
+  // historial: vista compacta del día (para mirar al vuelo); el lápiz abre la edición completa
+  const editDays=new Set();
+  function compactSet(e,d){
+    const st=setVerdict(e,d).state;
+    let t;
+    if(d.w!=null&&d.r!=null)t=fmtN(d.w)+"×"+d.r;
+    else{const p=[];if(d.r!=null)p.push(d.r+" reps");if(d.w!=null)p.push(fmtN(d.w)+" kg");if(d.m!=null)p.push(fmtDist(d.m));if(d.t!=null)p.push(fmtDur(d.t));t=p.join(" · ")||"✓"}
+    return '<span class="hs '+st+'">'+esc(t)+(st==="up"?"↑":st==="down"?"↓":"")+'</span>';
+  }
+  function dayCompactHTML(d,l){
+    let sets=0,vol=0;
+    l.forEach(e=>doneArr(e).forEach(x=>{if(x){sets++;if(x.w!=null&&x.r!=null)vol+=x.w*x.r}}));
+    const rows=l.map(e=>{
+      const r=imgOf(e.name),ds=doneArr(e),done=ds.filter(Boolean);
+      const body=done.length?done.map(x=>compactSet(e,x)).join("")+(done.length<ds.length?'<span class="hs miss">'+(ds.length-done.length)+' sin hacer</span>':''):'<span class="hs plan">'+esc((e.sets?e.sets+"× ":"")+(planText(e)||"sin datos"))+(d<=today&&ds.length?' · sin marcar':'')+'</span>';
+      return '<li><span class="hthumb">'+(r?mediaHTML(r):'<i>'+esc((e.name||"?").charAt(0).toUpperCase())+'</i>')+'</span><div><b>'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★</span>':'')+'</b><div class="hsets">'+body+'</div>'+(e.memo?'<small class="hmemo">'+esc(e.memo)+'</small>':'')+'</div></li>';
+    }).join("");
+    return '<div class="hcompact"><div class="hbar"><span>'+(sets?sets+(sets===1?" serie":" series")+(vol?' · '+Math.round(vol).toLocaleString("es-CL")+' kg':''):'Sin series marcadas')+'</span>'+
+      '<button type="button" class="iconbtn hgo" data-hgo="'+d+'" aria-label="Abrir este día en Hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></button>'+
+      '<button type="button" class="iconbtn hed" data-hedit="'+d+'" aria-label="Editar este día">'+PENCIL+'</button></div><ul class="hrows">'+rows+'</ul></div>';
+  }
+  $("history").addEventListener("click",e=>{
+    const b=e.target.closest("[data-hedit],[data-hgo]");if(!b)return;
+    if(b.dataset.hgo){showTab("anotar");goDay(b.dataset.hgo);return}
+    const d=b.dataset.hedit;editDays.has(d)?editDays.delete(d):editDays.add(d);editEntry=null;editing=null;renderHistory();
+  });
   function renderHistory(){
     renderStreak();
     const h=$("history");
@@ -1780,7 +1806,9 @@ export function startApp(env){
       if(m!==lastMonth){html+='<div class="month">'+esc(fmtMonth(d))+'</div>';lastMonth=m}
       const l=byDay[d].sort(byCreated);
       const names=[...new Set(l.map(e=>e.name))].join(" · ");
-      html+='<details class="day" data-d="'+d+'"'+(openDays.has(d)?' open':'')+'><summary><h3>'+(d===today?"Hoy · ":"")+esc(fmtDay(d))+'</h3><span class="cnt">'+l.length+(l.length===1?" ejercicio":" ejercicios")+(()=>{const gs=splitSessions(l);return gs.map(g=>sessDur(g)&&g.end>g.start?(gs.length>1?(sessLabel(g).split(" · ")[0]+" "):"")+fmtSess(sessDur(g)):"").filter(Boolean).map(x=>" · "+x).join("")})()+'</span><span class="names">'+esc(names)+'</span></summary><div class="list">'+sessListHTML(splitSessions(l))+'<button type="button" class="linkbtn hsave" data-hsave="'+d+'">'+SAVEIC+' Guardar este día como rutina</button></div></details>';
+      html+='<details class="day" data-d="'+d+'"'+(openDays.has(d)?' open':'')+'><summary><h3>'+(d===today?"Hoy · ":"")+esc(fmtDay(d))+'</h3><span class="cnt">'+l.length+(l.length===1?" ejercicio":" ejercicios")+(()=>{const gs=splitSessions(l);return gs.map(g=>sessDur(g)&&g.end>g.start?(gs.length>1?(sessLabel(g).split(" · ")[0]+" "):"")+fmtSess(sessDur(g)):"").filter(Boolean).map(x=>" · "+x).join("")})()+'</span><span class="names">'+esc(names)+'</span></summary>'+(editDays.has(d)
+        ?'<div class="list"><div class="hbar"><span>Editando este día</span><button type="button" class="btnlike solid" data-hedit="'+d+'">Listo</button></div>'+sessListHTML(splitSessions(l))+'<button type="button" class="linkbtn hsave" data-hsave="'+d+'">'+SAVEIC+' Guardar este día como rutina</button></div>'
+        :dayCompactHTML(d,l))+'</details>';
     });
     h.innerHTML=html;
     const left=allDays.length-daysToShow.length;
