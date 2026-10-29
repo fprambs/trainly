@@ -19,12 +19,6 @@
   --ok:#3DD68C; --oksoft:#0F2A1E; --down:#FF7EA8; --downsoft:#3A1626; --gold:#FFC54D; --goldsoft:#33290F;
   --media:#1F2230; --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.3);
   --accent:#8E84FF; --accent-ink:#120F2E; --soft:#221F45; --up:#8E84FF; --upsoft:#221F45; color-scheme:dark}
-:root[data-palette="azul"]{--accent:#1F6FEB; --accent-ink:#FFFFFF; --soft:#E3EEFD; --up:#1F6FEB; --upsoft:#E3EEFD;}
-@media (prefers-color-scheme: dark){:root[data-palette="azul"]:not([data-theme="light"]){--accent:#5AA2FF; --accent-ink:#06162E; --soft:#132A47; --up:#5AA2FF; --upsoft:#132A47;}}
-:root[data-palette="azul"][data-theme="dark"]{--accent:#5AA2FF; --accent-ink:#06162E; --soft:#132A47; --up:#5AA2FF; --upsoft:#132A47;}
-:root[data-palette="grafito"]{--accent:#1E2230; --accent-ink:#FFFFFF; --soft:#E9EBF0; --up:#0E8C7E; --upsoft:#DDF3EF;}
-@media (prefers-color-scheme: dark){:root[data-palette="grafito"]:not([data-theme="light"]){--accent:#E9EBF1; --accent-ink:#11141B; --soft:#262B36; --up:#3FD3BF; --upsoft:#0F2D2A;}}
-:root[data-palette="grafito"][data-theme="dark"]{--accent:#E9EBF1; --accent-ink:#11141B; --soft:#262B36; --up:#3FD3BF; --upsoft:#0F2D2A;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 /* solo la primera letra en mayúscula ("Lunes, 26 de octubre", no "De Octubre") */
@@ -1070,3 +1064,20 @@ body[data-tab="anotar"] .wrap{touch-action:pan-y}
 .wk.gold b{color:var(--gold)}
 .wk[hidden]{display:none}
 @media (max-width:360px){.wk b{font-size:1.2rem}.wk{padding:0 7px}}
+
+/* ---------- Apariencia: modo + paletas ---------- */
+.apmode{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;border-radius:14px;background:var(--surface2);border:1px solid var(--line)}
+.apmode button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;border:0;border-radius:10px;background:transparent;color:var(--muted);font-weight:600;font-size:.92rem;padding:0 6px}
+.apmode button[aria-checked="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.appal{display:grid;grid-template-columns:repeat(auto-fill,minmax(68px,1fr));gap:8px;margin-top:12px}
+.appal button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 4px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);min-height:0}
+.appal button small{font-size:.76rem;font-weight:600;color:var(--muted);white-space:nowrap}
+.appal button[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 1.5px var(--accent) inset}
+.appal button[aria-checked="true"] small{color:var(--ink)}
+.apsw{position:relative;width:40px;height:40px;border-radius:50%;overflow:hidden;background:linear-gradient(135deg,var(--lb) 50%,var(--db) 50%);box-shadow:0 0 0 1px var(--line)}
+.apsw::before,.apsw::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%}
+.apsw::before{left:6px;top:6px;background:var(--l)}
+.apsw::after{right:6px;bottom:6px;background:var(--d)}
+.apsw i{display:none}
+.appal button[aria-checked="true"] .apsw i{display:block;position:absolute;inset:0;margin:auto;width:14px;height:14px;border-radius:50%;background:var(--surface);box-shadow:0 0 0 2px var(--accent)}
+[data-appear] .hint{margin:10px 0 0}

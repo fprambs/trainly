@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { SUPABASE_URL, SUPABASE_ANON_KEY } from "./config.js";
 import { startApp } from "./app.js";
 import { createAI } from "./ai.js";
+import { initTheme, appearanceHTML } from "./theme.js";
+initTheme();
 
 const $ = id => document.getElementById(id);
 const esc = s => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
@@ -312,10 +314,14 @@ function renderSheet() {
         '<h3>Mis profesores</h3>' + (coachesOfMe.length ? '<div class="stulist">' + coachesOfMe.map(c => '<div class="sturow"><span class="stumain"><span class="av">' + esc(c.name.charAt(0).toUpperCase()) + '</span><span><b>' + esc(c.name) + '</b></span></span><div class="stuacts"><button type="button" class="btnlike danger" data-leave="' + esc(c.id) + '">Dejar</button></div></div>').join("") + '</div>' : '<p class="hint">Entrenas por tu cuenta. Puedes vincularte con uno o más profesores cuando quieras.</p>') +
         '<form class="addstu" id="linkForm"><input id="linkCode" placeholder="Código del profesor o invitación" autocomplete="off" autocapitalize="characters" aria-label="Código"><button class="btnlike solid" type="submit">Vincular</button></form>' +
         '<button type="button" class="linkbtn" id="becomeCoach">Quiero ser profesor (también puedo seguir entrenando)</button>') +
+      '<h3>Apariencia</h3><div data-appear>' + appearanceHTML() + '</div>' +
+      '<div id="backupSlot"></div>' +
       '<h3>Contraseña</h3><form class="addstu" id="pwForm"><input id="pwNew" type="password" minlength="6" placeholder="Nueva contraseña (mín. 6)" autocomplete="new-password" autocapitalize="none" aria-label="Nueva contraseña"><button class="btnlike solid" type="submit">Cambiar</button></form>' +
       '<div class="sheetfoot"><button type="button" class="btnlike danger" id="logout">Cerrar sesión</button></div>';
   }
+  const bk = $("backupBox"); if (bk) $("park").appendChild(bk);
   s.innerHTML = '<div class="sheethead"><h2 id="sheetTitle">' + (isCoach && sheetKind === "students" ? "Mis alumnos" : "Mi cuenta") + '</h2><button type="button" class="iconbtn" id="sheetX" aria-label="Cerrar">✕</button></div>' + tabs + '<p class="autherr" id="sheetMsg" role="status"></p>' + body;
+  if (bk && $("backupSlot")) $("backupSlot").appendChild(bk);
 }
 const sheetMsg = (t, ok) => { const e = $("sheetMsg"); if (e) { e.textContent = t; e.classList.toggle("ok", !!ok); } };
 $("sheet").addEventListener("click", async e => {
