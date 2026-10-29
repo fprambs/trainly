@@ -1,4 +1,4 @@
-# Trainly · Bitácora de Entreno
+# Trainly
 
 App web instalable (PWA) para anotar entrenamientos, con acceso para **profesor** y **alumno**.
 
