@@ -398,7 +398,14 @@ export function startApp(env){
   function setAddOpen(open,focus){
     $("addCard").hidden=!open;$("addBack").hidden=!open;$("addOpen").setAttribute("aria-expanded",open?"true":"false");
     document.body.classList.toggle("add-open",open);
-    if(open){flash("");if(focus)setTimeout(()=>nameIn.focus(),60)}else closeSugg();
+    if(open){flash("");if(focus)setTimeout(()=>nameIn.focus(),60)}else{closeSugg();resetAddForm()}
+  }
+  // al cerrar, el formulario queda limpio para la próxima vez
+  function resetAddForm(){
+    nameIn.value="";["sets","reps","weight","dist","tMin","tSec","memo"].forEach(k=>{const x=$(k);if(x)x.value=""});
+    fields.clear();fields.add("reps");fields.add("weight");applyFields();
+    const st=$("status");st.textContent="";st.classList.remove("err");
+    $("addCard").scrollTop=0;updateAddBtn();
   }
   $("addBack").addEventListener("click",()=>{addUserClosed=true;setAddOpen(false)});
   document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("addCard").hidden&&list.hidden)setAddOpen(false)});
