@@ -1081,3 +1081,15 @@ body[data-tab="anotar"] .wrap{touch-action:pan-y}
 .apsw i{display:none}
 .appal button[aria-checked="true"] .apsw i{display:block;position:absolute;inset:0;margin:auto;width:14px;height:14px;border-radius:50%;background:var(--surface);box-shadow:0 0 0 2px var(--accent)}
 [data-appear] .hint{margin:10px 0 0}
+
+/* cambiar contraseña */
+.pwform{display:flex;flex-direction:column;gap:8px}
+.pwform .hint{margin:0}
+.pwacts{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px}
+.pwacts .btnlike{min-height:46px;padding:0 16px}
+
+/* ventanas flotantes: margen en los 4 lados para que se sientan encima de la pantalla */
+.sheetov,.smov{padding:max(14px,env(safe-area-inset-top,0px)) max(10px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px))}
+.sheet,.smsheet{max-height:100%;border-radius:24px;padding-bottom:20px;box-shadow:0 18px 50px rgba(0,0,0,.35);border:1px solid var(--line)}
+.addcard{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));border-radius:24px;padding-bottom:20px;box-shadow:0 18px 50px rgba(0,0,0,.35);border:1px solid var(--line)}
+@media (min-width:820px){.sheetov{align-items:center}.addcard{bottom:auto;top:6vh;max-height:88dvh}}

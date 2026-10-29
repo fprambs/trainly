@@ -288,6 +288,13 @@ $("acctBtn").onclick = () => openSheet(profile.role === "coach" ? "students" : "
 $("sheetOv").addEventListener("click", e => { if (e.target.id === "sheetOv") closeSheet(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("sheetOv").hidden) closeSheet(); });
 
+const pwIn = (id, ph, ac) => '<input id="' + id + '" type="password" minlength="6" placeholder="' + ph + '" autocomplete="' + ac + '" autocapitalize="none" autocorrect="off" spellcheck="false" aria-label="' + ph + '">';
+function pwFormHTML() {
+  return '<form class="pwform" id="pwForm" novalidate>' +
+    (recovering ? '<p class="hint">Entraste con el enlace de recuperación: elige tu nueva contraseña.</p>' : pwIn("pwOld", "Contraseña actual", "current-password")) +
+    pwIn("pwNew", "Nueva contraseña (mín. 6)", "new-password") + pwIn("pwNew2", "Repite la nueva contraseña", "new-password") +
+    '<div class="pwacts"><button type="button" class="linkbtn" id="pwShow">Mostrar</button><button class="btnlike solid" type="submit">Cambiar contraseña</button></div></form>';
+}
 function copyBtn(text) { return '<button type="button" class="btnlike" data-copy="' + esc(text) + '">Copiar</button>'; }
 function renderSheet() {
   const s = $("sheet");
@@ -316,7 +323,7 @@ function renderSheet() {
         '<button type="button" class="linkbtn" id="becomeCoach">Quiero ser profesor (también puedo seguir entrenando)</button>') +
       '<h3>Apariencia</h3><div data-appear>' + appearanceHTML() + '</div>' +
       '<div id="backupSlot"></div>' +
-      '<h3>Contraseña</h3><form class="addstu" id="pwForm"><input id="pwNew" type="password" minlength="6" placeholder="Nueva contraseña (mín. 6)" autocomplete="new-password" autocapitalize="none" aria-label="Nueva contraseña"><button class="btnlike solid" type="submit">Cambiar</button></form>' +
+      '<h3>Contraseña</h3>' + pwFormHTML() +
       '<div class="sheetfoot"><button type="button" class="btnlike danger" id="logout">Cerrar sesión</button></div>';
   }
   const bk = $("backupBox"); if (bk) $("park").appendChild(bk);
@@ -327,6 +334,7 @@ const sheetMsg = (t, ok) => { const e = $("sheetMsg"); if (e) { e.textContent = 
 $("sheet").addEventListener("click", async e => {
   const b = e.target.closest("button"); if (!b) return;
   if (b.id === "sheetX") { closeSheet(); return; }
+  if (b.id === "pwShow") { const show = b.textContent === "Mostrar"; ["pwOld", "pwNew", "pwNew2"].forEach(id => { const i = $(id); if (i) i.type = show ? "text" : "password"; }); b.textContent = show ? "Ocultar" : "Mostrar"; return; }
   if (b.dataset.sk) { sheetKind = b.dataset.sk; renderSheet(); return; }
   if (b.dataset.copy != null) {
     const t = b.dataset.copy;
@@ -371,11 +379,22 @@ $("sheet").addEventListener("click", async e => {
 $("sheet").addEventListener("submit", async e => {
   e.preventDefault();
   if (e.target.id === "pwForm") {
-    const pw = $("pwNew").value;
-    if (pw.length < 6) { sheetMsg("La contraseña debe tener al menos 6 caracteres."); $("pwNew").focus(); return; }
-    const { error } = await sb.auth.updateUser({ password: pw });
-    if (error) { sheetMsg(niceAuthError(error)); return; }
-    recovering = false; $("pwNew").value = ""; sheetMsg("Contraseña actualizada.", true); return;
+    const old = $("pwOld"), pw = $("pwNew").value, pw2 = $("pwNew2").value;
+    if (old && !old.value) { sheetMsg("Escribe tu contraseña actual."); old.focus(); return; }
+    if (pw.length < 6) { sheetMsg("La nueva contraseña debe tener al menos 6 caracteres."); $("pwNew").focus(); return; }
+    if (pw !== pw2) { sheetMsg("Las contraseñas nuevas no coinciden."); $("pwNew2").focus(); return; }
+    if (old && old.value === pw) { sheetMsg("La nueva contraseña debe ser distinta de la actual."); $("pwNew").focus(); return; }
+    const btn = e.target.querySelector("[type=submit]"); btn.disabled = true;
+    try {
+      if (old) { // verifica la contraseña actual antes de cambiarla
+        const { error: e1 } = await sb.auth.signInWithPassword({ email: profile.email, password: old.value });
+        if (e1) { sheetMsg("La contraseña actual no es correcta."); old.value = ""; old.focus(); return; }
+      }
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) { sheetMsg(niceAuthError(error)); return; }
+      recovering = false; renderSheet(); sheetMsg("Contraseña actualizada.", true);
+    } finally { btn.disabled = false; }
+    return;
   }
   if (e.target.id === "addStu") {
     const name = $("stuName").value.trim(); if (!name) { $("stuName").focus(); return; }
@@ -400,6 +419,6 @@ function askNewPassword() {
   recovering = true;
   if (!profile) { setTimeout(askNewPassword, 300); return; }
   openSheet("account");
-  sheetMsg("Elige tu nueva contraseña abajo y toca Cambiar.", true);
+  sheetMsg("Elige tu nueva contraseña abajo, repítela y toca Cambiar contraseña.", true);
   const i = $("pwNew"); if (i) { i.scrollIntoView({ block: "center" }); i.focus(); }
 }
