@@ -1213,3 +1213,14 @@ html,body{overflow-x:clip}
 .daynav .daytoday{background:var(--soft)!important;color:var(--accent)!important}
 .daynav .dp-sub{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 .daynav .daypick{min-width:0;flex:1}
+
+/* peso por mancuerna: ícono y etiqueta */
+.duoic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.sidepill{display:inline-flex;align-items:center;gap:6px;width:max-content;max-width:100%;margin-top:6px;padding:4px 10px 4px 8px;border-radius:99px;background:var(--soft);color:var(--accent);font-family:var(--body);font-size:.78rem;font-weight:700;letter-spacing:0;text-transform:none;line-height:1.2}
+#exName .sidepill{display:flex}
+label.ps{display:flex;align-items:center;gap:6px;color:var(--accent)}
+label.ps small{font-weight:600;opacity:.8;text-transform:none;letter-spacing:0}
+.dhead .sidepill{margin:2px 0 4px}
+.duox{font-size:.7rem;font-weight:800;margin-left:-3px;letter-spacing:0}
+label.ps{white-space:nowrap}
+.sidepill .duox{font-size:.72rem;font-family:var(--body)}
