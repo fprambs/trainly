@@ -1059,3 +1059,14 @@ body[data-tab="anotar"] .wrap{touch-action:pan-y}
 .sw-out{transition:transform .15s ease-in,opacity .15s ease-in}
 .sw-in{transition:transform .24s cubic-bezier(.2,.8,.2,1),opacity .24s ease-out}
 @media (prefers-reduced-motion:reduce){.sw-out,.sw-in{transition:none}}
+/* resumen semanal: fichas de números en una sola fila */
+.weekline{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);flex-wrap:nowrap;align-items:stretch}
+.weekline .wl{font-size:.68rem;text-transform:uppercase;letter-spacing:.09em;font-weight:700;color:var(--muted)}
+.wkstats{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.wk{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:0 10px;border-left:1px solid var(--line);min-width:0}
+.wk:first-child{padding-left:0;border-left:0}
+.wk b{font-family:var(--display);font-weight:800;font-size:1.45rem;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums;margin:0;white-space:nowrap}
+.wk i{font-style:normal;font-size:.74rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.wk.gold b{color:var(--gold)}
+.wk[hidden]{display:none}
+@media (max-width:360px){.wk b{font-size:1.2rem}.wk{padding:0 7px}}
