@@ -74,10 +74,10 @@ $("authForm").addEventListener("submit", async ev => {
 });
 $("aShow").onclick = () => { const i = $("aPass"), show = i.type === "password"; i.type = show ? "text" : "password"; $("aShow").textContent = show ? "Ocultar" : "Ver"; };
 $("aForgot").onclick = async () => {
-  const email = $("aEmail").value.trim();
-  if (!email) { authMsg("Escribe tu email arriba y vuelve a tocar aquí."); return; }
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
-  authMsg(error ? niceAuthError(error) : "Te enviamos un correo para crear una nueva contraseña.", !error);
+  const email = $("aEmail").value.trim().toLowerCase();
+  if (!email) { authMsg("Escribe tu email arriba y vuelve a tocar aquí."); $("aEmail").focus(); return; }
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + "/" });
+  authMsg(error ? niceAuthError(error) : "Te enviamos un correo a " + email + ". Abre el enlace en este mismo equipo para crear tu nueva contraseña.", !error);
 };
 
 // ======================================================================
@@ -290,6 +290,7 @@ function renderSheet() {
         '<h3>Mis profesores</h3>' + (coachesOfMe.length ? '<div class="stulist">' + coachesOfMe.map(c => '<div class="sturow"><span class="stumain"><span class="av">' + esc(c.name.charAt(0).toUpperCase()) + '</span><span><b>' + esc(c.name) + '</b></span></span><div class="stuacts"><button type="button" class="btnlike danger" data-leave="' + esc(c.id) + '">Dejar</button></div></div>').join("") + '</div>' : '<p class="hint">Entrenas por tu cuenta. Puedes vincularte con uno o más profesores cuando quieras.</p>') +
         '<form class="addstu" id="linkForm"><input id="linkCode" placeholder="Código del profesor o invitación" autocomplete="off" autocapitalize="characters" aria-label="Código"><button class="btnlike solid" type="submit">Vincular</button></form>' +
         '<button type="button" class="linkbtn" id="becomeCoach">Quiero ser profesor (también puedo seguir entrenando)</button>') +
+      '<h3>Contraseña</h3><form class="addstu" id="pwForm"><input id="pwNew" type="password" minlength="6" placeholder="Nueva contraseña (mín. 6)" autocomplete="new-password" autocapitalize="none" aria-label="Nueva contraseña"><button class="btnlike solid" type="submit">Cambiar</button></form>' +
       '<div class="sheetfoot"><button type="button" class="btnlike danger" id="logout">Cerrar sesión</button></div>';
   }
   s.innerHTML = '<div class="sheethead"><h2 id="sheetTitle">' + (isCoach && sheetKind === "students" ? "Mis alumnos" : "Mi cuenta") + '</h2><button type="button" class="iconbtn" id="sheetX" aria-label="Cerrar">✕</button></div>' + tabs + '<p class="autherr" id="sheetMsg" role="status"></p>' + body;
@@ -341,6 +342,13 @@ $("sheet").addEventListener("click", async e => {
 });
 $("sheet").addEventListener("submit", async e => {
   e.preventDefault();
+  if (e.target.id === "pwForm") {
+    const pw = $("pwNew").value;
+    if (pw.length < 6) { sheetMsg("La contraseña debe tener al menos 6 caracteres."); $("pwNew").focus(); return; }
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { sheetMsg(niceAuthError(error)); return; }
+    recovering = false; $("pwNew").value = ""; sheetMsg("Contraseña actualizada.", true); return;
+  }
   if (e.target.id === "addStu") {
     const name = $("stuName").value.trim(); if (!name) { $("stuName").focus(); return; }
     const { data, error } = await sb.rpc("create_athlete", { p_name: name });
@@ -359,13 +367,11 @@ $("sheet").addEventListener("submit", async e => {
 });
 
 // nueva contraseña tras el correo de recuperación
-async function askNewPassword() {
+let recovering = false;
+function askNewPassword() {
+  recovering = true;
+  if (!profile) { setTimeout(askNewPassword, 300); return; }
   openSheet("account");
-  $("sheet").innerHTML = '<div class="sheethead"><h2 id="sheetTitle">Nueva contraseña</h2></div><form class="addstu" id="npForm"><input id="npPass" type="password" minlength="6" placeholder="Nueva contraseña" autocomplete="new-password"><button class="btnlike solid" type="submit">Guardar</button></form><p class="autherr" id="sheetMsg"></p>';
-  $("npForm").onsubmit = async ev => {
-    ev.preventDefault();
-    const { error } = await sb.auth.updateUser({ password: $("npPass").value });
-    sheetMsg(error ? niceAuthError(error) : "Contraseña actualizada.", !error);
-    if (!error) setTimeout(closeSheet, 1200);
-  };
+  sheetMsg("Elige tu nueva contraseña abajo y toca Cambiar.", true);
+  const i = $("pwNew"); if (i) { i.scrollIntoView({ block: "center" }); i.focus(); }
 }
