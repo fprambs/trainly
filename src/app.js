@@ -1477,7 +1477,7 @@ export function startApp(env){
 
   // ---------- resumen para compartir ----------
   let sumState=null; // {date,gi}
-  const LOGO_SVG='<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="var(--accent)"/><g fill="var(--accent-ink)" transform="translate(0 22)"><rect x="96" y="116" width="34" height="104" rx="10"/><rect x="138" y="92" width="40" height="152" rx="12"/><rect x="176" y="150" width="160" height="36" rx="6"/><rect x="334" y="92" width="40" height="152" rx="12"/><rect x="382" y="116" width="34" height="104" rx="10"/><rect x="225" y="170" width="62" height="205" rx="22"/></g></svg>';
+  const LOGO_SVG='<img class="slogo" src="/icons/icon-192.png" alt="" aria-hidden="true">';
   function fmtClock(ms){const t=Math.max(0,Math.round(ms/1000)),h=Math.floor(t/3600),m=Math.floor(t%3600/60),sec=t%60;return h?h+":"+pad(m)+":"+pad(sec):m+":"+pad(sec)}
   function sumGroup(){
     const list=entries.filter(e=>e.date===sumState.date).sort(byCreated);
