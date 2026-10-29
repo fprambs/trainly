@@ -21,17 +21,21 @@ export function startApp(env){
   const TABS=["anotar","rutinas","historial","progreso","ejercicios"];
   // teclado abierto (campo de texto con foco): se esconden la barra de abajo y el +, y el campo queda a la vista
   const isTextField=el=>el&&((el.tagName==="INPUT"&&!/^(button|checkbox|radio|submit|file|range|color)$/i.test(el.type))||el.tagName==="TEXTAREA");
-  document.addEventListener("focusin",ev=>{if(isTextField(ev.target)){document.body.classList.add("kb");setTimeout(()=>{try{ev.target.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}},280)}});
+  const touchUI=()=>{try{return matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches}catch(e){return false}};
+  document.addEventListener("focusin",ev=>{if(isTextField(ev.target)&&touchUI()){document.body.classList.add("kb");setTimeout(()=>{try{ev.target.scrollIntoView({block:"center",behavior:"smooth"})}catch(e){}},280)}});
   document.addEventListener("focusout",()=>setTimeout(()=>{if(!isTextField(document.activeElement))document.body.classList.remove("kb")},60));
+  const tabScroll={};
   function showTab(t){
     if(!TABS.includes(t))t="anotar";
+    const prevT=document.body.dataset.tab;if(prevT&&prevT!==t)tabScroll[prevT]=window.scrollY;
     document.body.dataset.tab=t;
     TABS.forEach(x=>{$("tab-"+x).hidden=x!==t;$("t-"+x).setAttribute("aria-selected",x===t?"true":"false")});
     // el historial siempre parte con todos los días cerrados
     if(t==="historial"){openDays.clear();document.querySelectorAll("#history details.day[open]").forEach(x=>{x.open=false})}
-    try{history.replaceState(null,"","#"+t)}catch(e){}
-    window.scrollTo(0,0);
+    try{history.replaceState(history.state,"","#"+t)}catch(e){}
+    window.scrollTo(0,t==="historial"?0:(tabScroll[t]||0));
   }
+  (()=>{const tb=document.querySelector(".tabs");const set=()=>document.documentElement.style.setProperty("--dock",Math.round(tb.getBoundingClientRect().height)+"px");set();try{new ResizeObserver(set).observe(tb)}catch(e){addEventListener("resize",set)}})();
   document.querySelector(".tabs").addEventListener("click",e=>{const b=e.target.closest("[data-tab]");if(b)showTab(b.dataset.tab)});
   showTab((location.hash||"").slice(1));
 
@@ -415,7 +419,7 @@ export function startApp(env){
     if(filled)flash("Relleno con tu última vez ("+fmtShort(last.date)+"). Cambia lo que necesites.");
   }
   nameIn.addEventListener("change",()=>{if(nameIn.value.trim())fillFromLast(nameIn.value.trim())});
-  nameIn.addEventListener("input",()=>{openSugg();updateAddBtn()});
+  nameIn.addEventListener("input",()=>{openSugg();updateAddBtn();const st=$("status");if(st.classList.contains("err")){st.classList.remove("err");st.textContent=""}});
   nameIn.addEventListener("focus",openSugg);
   nameIn.addEventListener("blur",()=>setTimeout(closeSugg,150));
   nameIn.addEventListener("keydown",e=>{
@@ -538,7 +542,8 @@ export function startApp(env){
       weight:numOrNull(fieldVal("weight","weight")),mins:fields.has("time")?getMins():null,dist:numOrNull(fieldVal("dist","dist")),
       memo:fieldVal("memo","memo").trim(),createdAt:Date.now()
     };
-    if(!e.name){nameIn.focus();return}
+    if(!e.name){const st=$("status");st.textContent="Escribe o elige un ejercicio.";st.classList.add("err");nameIn.focus();return}
+    $("status").classList.remove("err");$("status").textContent="";
     try{
       lastNew=e.createdAt;
       await store.add(e);
@@ -936,7 +941,7 @@ export function startApp(env){
       document.body.appendChild(d);setTimeout(()=>d.remove(),1000)}
   }
   $("toast").addEventListener("click",async e=>{
-    if(!e.target.closest("#toastBtn")||!toastAct)return;
+    if(!e.target.closest("#toastBtn")||!toastAct){$("toast").hidden=true;clearTimeout(toastT);toastAct=null;return}
     const a=toastAct;toastAct=null;$("toast").hidden=true;clearTimeout(toastT);
     try{await a.fn()}catch(err){toast("No se pudo deshacer. Inténtalo de nuevo.")}
   });
@@ -984,12 +989,16 @@ export function startApp(env){
     touch();ensureAudio();
     if(b.id==="rTimeBtn"){const p=$("rPre");p.hidden=!p.hidden;b.setAttribute("aria-expanded",p.hidden?"false":"true");return}
     if(b.dataset.r==="skip"){stopRest();return}
+    if(b.dataset.go){stopRest();return} // "Anotar ya": corta el descanso y abre la serie
     if(b.dataset.r){const d=+b.dataset.r;rest.end+=d*1000;rest.total=Math.max(1,rest.total+d);rest.beeped=rest.end<=Date.now()&&rest.beeped;$("rest").classList.toggle("over",rest.end<=Date.now());tick();return}
     if(b.dataset.preset){
       const s=+b.dataset.preset,by=Object.assign({},restCfg.by);by[rest.key]=s;
       const name=rest.name;
       try{await store.setSettings({def:restCfg.def||90,by})}catch(err){}
-      startRest({name},s);toast("Descanso de "+name+": "+(s<60?s+" s":fmtSecs(s)+" min"));
+      const now=Date.now(),elapsed=rest.total-(rest.end-now)/1000;
+      rest.total=s;rest.end=now+(s-elapsed)*1000;rest.beeped=rest.end<=now;
+      $("rPre").hidden=true;$("rTimeBtn").setAttribute("aria-expanded","false");
+      renderRestPresets();tick();toast("Descanso de "+name+": "+(s<60?s+" s":fmtSecs(s)+" min"));
     }
   });
   function tick(){
@@ -1099,7 +1108,7 @@ export function startApp(env){
     const show=!!nx&&!FS.open;
     bar.hidden=!show;document.body.classList.toggle("has-toca",show);
     const rn=$("rNext");
-    if(nx){rn.hidden=false;rn.innerHTML='Después: <b>'+esc(nx.e.name)+' · serie '+(nx.r+1)+'</b>'}else{rn.hidden=true}
+    if(nx){rn.hidden=false;rn.innerHTML='Después: <b>'+esc(nx.e.name)+' · serie '+(nx.r+1)+'</b>'+goBtnHTML(nx.e,nx.r,"btnlike rnextbtn","Anotar ya")}else{rn.hidden=true}
     if(!show){bar.innerHTML="";return}
     const e=nx.e,t=doneArr(e).length;
     bar.innerHTML='<button type="button" class="tt-info" data-open="'+esc(e.id)+'"><small>Te toca</small><b>'+esc(e.name)+'</b><span>Serie '+(nx.r+1)+' de '+t+(planText(e)?' · '+esc(planText(e)):'')+'</span></button>'+goBtnHTML(e,nx.r,"tt-go");
@@ -1253,7 +1262,10 @@ export function startApp(env){
     const act=b.dataset.sma;if(!act)return;
     if(act==="cancel"){closeSetModal();return}
     const i=SM.i,edit=SM.edit,D=SM.draft;
-    if(act==="undo"){closeSetModal();await saveSet(e,i,null);reRenderLists();return}
+    if(act==="undo"){
+      const old=doneArr(e)[i],id=e.id;closeSetModal();await saveSet(e,i,null);reRenderLists();
+      toast("Serie "+(i+1)+" desmarcada",false,{label:"Deshacer",fn:async()=>{const x=entries.find(z=>z.id===id);if(x){await saveSet(x,i,old);reRenderLists()}}});
+      return}
     const old=doneArr(e)[i];
     const val={w:D.w??null,r:D.r??null,m:D.m??null,t:D.t??null,at:edit&&old?old.at??null:(isLive(e)?Date.now():null)};
     const prev=bestOther(e);
@@ -1604,7 +1616,7 @@ export function startApp(env){
       const pend=ds.length-hechas.length;
       const orm=valOf(e,"orm"),best=hechas.some(x=>x.w!=null&&x.r!=null)?orm:null;
       const detail=lines.length?lines.join(" · "):(planText(e)?"Plan: "+(e.sets?e.sets+"× ":"")+planText(e):"Sin series");
-      return '<div class="srow"><span class="sth">'+(r?mediaHTML(r):esc((e.name||"?").charAt(0).toUpperCase()))+'</span>'+
+      return '<div class="sumrow"><span class="sth">'+(r?mediaHTML(r):esc((e.name||"?").charAt(0).toUpperCase()))+'</span>'+
         '<span class="sinfo"><b>'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★ Récord</span>':'')+'</b><span>'+esc(detail)+'</span></span>'+
         '<span class="sside">'+(ds.length?'<b class="'+(pend?"pend":"ok")+'">'+hechas.length+'/'+ds.length+(pend?"":" ✓")+'</b>':'')+(best?'<small>1RM '+fmtN(r1(best))+' kg</small>':'')+'</span></div>';
     }).join("");
