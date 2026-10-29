@@ -1,4 +1,4 @@
-// Cliente de IA: llama a la función del servidor (/api/ai), que guarda la clave de Gemini.
+// Cliente de IA: llama a la función del servidor (/api/ai), que guarda la clave de la IA (Groq).
 export function createAI(sb){
   async function call(task,payload,signal){
     const {data}=await sb.auth.getSession();
