@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Trainly</title>
 <meta name="description" content="Trainly: tu bitácora de entrenamiento, para alumnos y profesores">
+<script>
+/* aplica modo y paleta guardados antes de pintar (sin parpadeo) */
+(function(){try{var m=localStorage.getItem("trainly-modo")||"system",d=m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches),t=d?"dark":"light",r=document.documentElement;r.setAttribute("data-theme",t);var c=JSON.parse(localStorage.getItem("trainly-tv")||"null");if(c&&c.t===t)for(var k in c.v)r.style.setProperty(k,c.v[k])}catch(e){}})();
+</script>
 <meta name="theme-color" content="#5B4FE6" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0E0F16" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -220,18 +224,6 @@
     <div class="catfilter" id="catFilter" role="group" aria-label="Filtrar por músculo" hidden></div>
     <button type="button" class="btnlike catai" id="catAIBtn" hidden>✨ Reclasificar todo con IA</button>
     <div class="exgrid" id="exgrid"></div>
-    <div class="appear">
-      <span class="flabel">Colores de la app</span>
-      <div class="swatches" id="swatches" role="radiogroup" aria-label="Paleta de colores">
-        <button type="button" role="radio" data-pal="" aria-checked="true"><i style="background:#5B4FE6"></i><i style="background:#8E84FF"></i>Índigo</button>
-        <button type="button" role="radio" data-pal="azul" aria-checked="false"><i style="background:#1F6FEB"></i><i style="background:#5AA2FF"></i>Azul</button>
-        <button type="button" role="radio" data-pal="grafito" aria-checked="false"><i style="background:#1E2230"></i><i style="background:#3FD3BF"></i>Grafito</button>
-      </div>
-    </div>
-    <div class="backup" id="backupBox" hidden>
-      <button type="button" class="btnlike" id="backupBtn">Descargar respaldo (Excel)</button>
-      <p class="note">Todo tu historial, serie por serie. Se abre en Excel o Google Sheets.</p>
-    </div>
   </section>
 
   <p class="note" id="storeNote"></p>
@@ -293,6 +285,11 @@
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle"></div>
 </div>
 
+<div id="park" hidden><div class="backup" id="backupBox" hidden>
+      <h3>Respaldo</h3>
+      <button type="button" class="btnlike" id="backupBtn">Descargar respaldo (Excel)</button>
+      <p class="note">Todo tu historial, serie por serie. Se abre en Excel o Google Sheets.</p>
+    </div></div>
 <script type="module" src="/src/main.js"></script>
 </body>
 </html>

@@ -2406,15 +2406,6 @@ export function startApp(env){
     }finally{btn.disabled=false;btn.textContent="Analizar de nuevo"}
   });
 
-  // ---------- paleta ----------
-  const PALK="bitacora-paleta";
-  function setPalette(pal){
-    if(pal)document.documentElement.setAttribute("data-palette",pal);else document.documentElement.removeAttribute("data-palette");
-    document.querySelectorAll("#swatches [data-pal]").forEach(b=>b.setAttribute("aria-checked",b.dataset.pal===(pal||"")?"true":"false"));
-    try{localStorage.setItem(PALK,pal||"")}catch(e){}
-  }
-  try{setPalette(localStorage.getItem(PALK)||"")}catch(e){setPalette("")}
-  $("swatches").addEventListener("click",e=>{const b=e.target.closest("[data-pal]");if(b)setPalette(b.dataset.pal)});
   applyFields();
   init();
 
