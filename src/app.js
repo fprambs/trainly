@@ -1,3 +1,4 @@
+import { optimizeVideo, optimizeImage, posterURL } from "./media.js";
 export function startApp(env){
 
   const $=id=>document.getElementById(id);
@@ -200,7 +201,19 @@ export function startApp(env){
   };
   // imágenes y videos → Supabase Storage (bucket público "media", carpeta del usuario)
   assets={
-    upload:async file=>{
+    upload:async(file,onProgress)=>{
+      if(/^video\//.test(file.type)){
+        const o=await optimizeVideo(file,onProgress);
+        const base=me+"/"+uuid();
+        const vf=o.file,vext=vf.type==="video/mp4"?"mp4":((vf.name||"").split(".").pop()||"mp4").toLowerCase().replace(/[^a-z0-9]/g,"");
+        const vpath=base+"."+vext;
+        if(vf.size>20*1024*1024)throw new Error("El video pesa "+Math.round(vf.size/1048576)+" MB y este navegador no pudo comprimirlo. Prueba desde Chrome actualizado o con un video más corto.");
+        const up=await sb.storage.from("media").upload(vpath,vf,{contentType:vf.type,cacheControl:"31536000",upsert:false});
+        if(up.error)throw up.error;
+        if(o.poster){try{await sb.storage.from("media").upload(base+".jpg",o.poster,{contentType:"image/jpeg",cacheControl:"31536000",upsert:false})}catch(e){}}
+        return {id:vpath,url:sb.storage.from("media").getPublicUrl(vpath).data.publicUrl,contentType:vf.type,info:o.info};
+      }
+      file=await optimizeImage(file);
       const ext=(file.name&&file.name.includes(".")?file.name.split(".").pop():(file.type.split("/")[1]||"bin")).toLowerCase().replace(/[^a-z0-9]/g,"");
       const path=me+"/"+uuid()+"."+ext;
       const {error}=await sb.storage.from("media").upload(path,file,{contentType:file.type,cacheControl:"31536000",upsert:false});
@@ -208,7 +221,7 @@ export function startApp(env){
       const url=sb.storage.from("media").getPublicUrl(path).data.publicUrl;
       return {id:path,url,contentType:file.type};
     },
-    delete:async id=>{if(String(id).startsWith(me+"/"))await sb.storage.from("media").remove([id])}
+    delete:async id=>{if(String(id).startsWith(me+"/")){const l=[id];const p=posterURL(id);if(p)l.push(p);await sb.storage.from("media").remove(l)}}
   };
   downloads={save:async({filename,data})=>{
     const blob=data instanceof Blob?data:new Blob([data],{type:filename.endsWith(".csv")?"text/csv":"application/octet-stream"});
@@ -290,12 +303,24 @@ export function startApp(env){
   const imgOf=n=>images[imgKey(n)]||null;
   const srcOf=r=>r.url||("/_blob/"+r.id);
   const isVid=r=>(r.type||"").startsWith("video/");
+  // miniaturas: los videos se muestran como imagen fija (poster) para no descargar ni reproducir todos a la vez
   function mediaHTML(r,cls,dataN){
     const a=(cls?' class="'+cls+'"':'')+(dataN!=null?' data-n="'+esc(dataN)+'"':'');
+    const p=isVid(r)&&(r.poster||posterURL(srcOf(r)));
+    if(p&&!/^blob:/.test(srcOf(r)))return '<img'+a+' src="'+esc(p)+'" data-vsrc="'+esc(srcOf(r))+'" loading="lazy" decoding="async" alt="">';
     return isVid(r)
-      ?'<video'+a+' src="'+esc(srcOf(r))+'" muted loop autoplay playsinline></video>'
-      :'<img'+a+' src="'+esc(srcOf(r))+'" alt="">';
+      ?'<video'+a+' src="'+esc(srcOf(r))+'" muted loop autoplay playsinline preload="metadata"></video>'
+      :'<img'+a+' src="'+esc(srcOf(r))+'" loading="lazy" decoding="async" alt="">';
   }
+  // vistas grandes (detalle, ficha, modo entrenamiento, pantalla completa): el video en movimiento
+  function mediaBig(r,cls){
+    const a=cls?' class="'+cls+'"':'';
+    if(!isVid(r))return '<img'+a+' src="'+esc(srcOf(r))+'" alt="">';
+    const p=r.poster||posterURL(srcOf(r));
+    return '<video'+a+' src="'+esc(srcOf(r))+'"'+(p&&!/^blob:/.test(srcOf(r))?' poster="'+esc(p)+'"':'')+' muted loop autoplay playsinline preload="auto"></video>';
+  }
+  // si un video antiguo no tiene imagen fija, se usa el video
+  document.addEventListener("error",ev=>{const t=ev.target;if(t&&t.tagName==="IMG"&&t.dataset&&t.dataset.vsrc){const v=document.createElement("video");v.className=t.className;if(t.dataset.n)v.dataset.n=t.dataset.n;v.src=t.dataset.vsrc;v.muted=true;v.loop=true;v.autoplay=true;v.playsInline=true;v.setAttribute("playsinline","");v.preload="metadata";t.replaceWith(v)}},true);
   function flash(msg,err){const st=$("status");st.className="status"+(err?" err":"");st.textContent=msg}
   async function addToCatalog(n){
     n=(n||"").trim().replace(/\s+/g," ");
@@ -429,25 +454,25 @@ export function startApp(env){
     const f=e.target.files&&e.target.files[0];e.target.value="";
     if(pendingBank){pendingBank=null;if(!f||!BK)return;
       if(!/^(image|video)\//.test(f.type)){toast("Ese archivo no es una imagen ni un video.");return}
-      if(f.size>20*1024*1024){toast("El archivo pesa más de 20 MB. Prueba con uno más liviano.");return}
+      if(f.size>200*1024*1024){toast("El archivo pesa más de 200 MB. Prueba con uno más liviano.");return}
       if(BK.preview)URL.revokeObjectURL(BK.preview);BK.file=f;BK.preview=URL.createObjectURL(f);BK.ptype=f.type;renderFicha();return}
     if(pendingName)await uploadFor(pendingName,f);
   });
   async function uploadBank(key,file){
     if(!assets||!file)return;
     if(!/^(image|video)\//.test(file.type)){toast("Ese archivo no es una imagen ni un video.");return}
-    if(file.size>20*1024*1024){toast("El archivo pesa más de 20 MB. Prueba con uno más liviano.");return}
+    if(file.size>200*1024*1024){toast("El archivo pesa más de 200 MB. Prueba con uno más liviano.");return}
     toast("Subiendo video…");
-    try{const res=await assets.upload(file);if(await bankSave(key,{image_url:res.url,image_type:res.contentType||file.type}))toast("Video actualizado en el banco común")}
+    try{const res=await assets.upload(file,p=>toast("Optimizando video… "+Math.round(p*100)+"%"));if(await bankSave(key,{image_url:res.url,image_type:res.contentType||file.type}))toast("Video actualizado en el banco común")}
     catch(e){toast("No se pudo subir. Revisa tu conexión e inténtalo de nuevo.")}
   }
   async function uploadFor(name,file){
     if(!assets||!file)return;
     if(!/^(image|video)\//.test(file.type)){flash("Ese archivo no es una imagen ni un video.",true);return}
-    if(file.size>20*1024*1024){flash("El archivo pesa más de 20 MB. Prueba con uno más liviano.",true);return}
+    if(file.size>200*1024*1024){flash("El archivo pesa más de 200 MB. Prueba con uno más liviano.",true);return}
     flash("Subiendo imagen…");
     try{
-      const res=await assets.upload(file);
+      const res=await assets.upload(file,p=>toast("Optimizando video… "+Math.round(p*100)+"%"));
       const key=imgKey(name),old=images[key];
       const map=Object.assign({},images);
       map[key]={id:res.id,url:res.url,type:res.contentType||file.type};
@@ -455,7 +480,7 @@ export function startApp(env){
       if(old&&old.id&&old.id!==res.id){try{await assets.delete(old.id)}catch(e){}}
       const still=(file.type==="image/jpeg"||file.type==="image/heic")&&/gif/i.test(file.name||"");
       flash("Imagen guardada para “"+name+"”"+(still?". Ojo: llegó como imagen fija, no como GIF.":""));toast("Imagen guardada para “"+name+"”");
-    }catch(e){flash("No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.",true)}
+    }catch(e){const m=e&&e.message&&/MB/.test(e.message)?e.message:"No se pudo subir. Revisa tu conexión e inténtalo de nuevo.";flash(m,true);toast(m)}
   }
   document.addEventListener("paste",async e=>{
     if($("excard").hidden||!assets||$("tab-anotar").hidden)return;
@@ -464,7 +489,7 @@ export function startApp(env){
   });
   function openLB(n){
     const r=imgOf(n);if(!r)return;
-    $("lbName").textContent=n;$("lbBody").innerHTML=mediaHTML(r);$("lb").hidden=false;$("lbClose").focus();
+    $("lbName").textContent=n;$("lbBody").innerHTML=mediaBig(r);$("lb").hidden=false;$("lbClose").focus();
   }
   const closeLB=()=>{$("lb").hidden=true;$("lbBody").innerHTML=""};
   $("lbClose").addEventListener("click",closeLB);
@@ -1106,7 +1131,7 @@ export function startApp(env){
     $("exDet").innerHTML='<div class="dwrap">'+
       '<div class="dtop"><button type="button" class="iconbtn" data-dact="close" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button><span>Ejercicio '+(idx+1)+' de '+day.length+'</span>'+
         '<button type="button" class="iconbtn edt'+(editEntry===e.id?' on':'')+'" data-eid="'+esc(e.id)+'" aria-label="Editar o borrar ejercicio">'+PENCIL+'</button></div>'+
-      '<div class="dmedia">'+(r?mediaHTML(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+(cat&&cat!=="otro"&&CATMAP[cat]?'<span class="dcat">'+esc(CATMAP[cat][1])+'</span>':'')+'</div>'+
+      '<div class="dmedia">'+(r?mediaBig(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+(cat&&cat!=="otro"&&CATMAP[cat]?'<span class="dcat">'+esc(CATMAP[cat][1])+'</span>':'')+'</div>'+
       '<div class="dhead"><h2 id="detName">'+esc(e.name)+(recIds.has(e.id)?' <span class="pr">★ Récord</span>':'')+'</h2>'+(lt?'<p>La vez pasada ('+esc(fmtShort(lt.date))+'): '+esc(lt.line)+'</p>':'')+(e.memo?'<p class="dmemo">'+esc(e.memo)+'</p>':'')+'</div>'+
       (editEntry===e.id?entryEditHTML(e):'')+
       (ds.length?'<ol class="srows" aria-label="Series">'+rows+'</ol>':'<p class="hint">Este ejercicio no tiene series. Agrega una con “+ Serie”.</p>')+
@@ -1275,7 +1300,7 @@ export function startApp(env){
         fields='<div class="fields">'+(showW?fField("w","Kg",D.w,1)+'<div class="fquick" role="group" aria-label="Atajos de peso"><button type="button" data-fs="w" data-d="-2.5">−2,5</button><button type="button" data-fs="w" data-d="2.5">+2,5</button><button type="button" data-fs="w" data-d="5">+5</button></div>':'')+(showR?fField("r","Reps",D.r,1):'')+'</div>';
       }
       body='<div class="fset'+(fresh?' arrive':'')+'" style="display:flex;flex-direction:column;gap:14px">'+
-        '<div class="fmedia">'+(r?mediaHTML(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+'</div>'+
+        '<div class="fmedia">'+(r?mediaBig(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+'</div>'+
         '<div class="fname"><small>Ronda '+(i+1)+'</small><b>'+esc(e.name)+'</b><span>Serie '+(i+1)+' de '+total+(planText(e)?' · pedido: '+esc(planText(e)):'')+'</span></div>'+
         (p?'<p class="fprev">Serie anterior: <b>'+esc(setLine(e,p))+'</b></p>':lt?'<p class="fprev">Última vez ('+esc(fmtShort(lt.date))+'): <b>'+esc(lt.line)+'</b></p>':'')+
         fields+
@@ -2127,7 +2152,7 @@ export function startApp(env){
     const meta=rows.length?(rows.length+(rows.length===1?" vez":" veces")+" · último "+fmtShort(last.date)+(valOf(last,"weight")!=null?" · "+fmtN(valOf(last,"weight"))+" kg":"")):"Sin registros aún";
     $("ficha").innerHTML='<div class="grab" aria-hidden="true"></div>'+
       '<div class="fihead"><h2 id="fichaName">'+esc(n)+'</h2>'+originTag(n)+'<button type="button" class="iconbtn" data-fclose aria-label="Cerrar">✕</button></div>'+
-      (BK&&BK.preview&&bankRowOf(n)&&bankRowOf(n).key===BK.key?'<div class="fimedia preview">'+mediaHTML({url:BK.preview,type:BK.ptype})+'<span class="pvtag">Vista previa · sin guardar</span></div>':'<button type="button" class="fimedia'+(r?'':' noimg')+'" data-view="'+i+'" aria-label="Ver '+esc(n)+' en grande"'+(r?'':' disabled')+'>'+(r?mediaHTML(r):'Sin imagen')+'</button>')+
+      (BK&&BK.preview&&bankRowOf(n)&&bankRowOf(n).key===BK.key?'<div class="fimedia preview">'+mediaBig({url:BK.preview,type:BK.ptype})+'<span class="pvtag">Vista previa · sin guardar</span></div>':'<button type="button" class="fimedia'+(r?'':' noimg')+'" data-view="'+i+'" aria-label="Ver '+esc(n)+' en grande"'+(r?'':' disabled')+'>'+(r?mediaBig(r):'Sin imagen')+'</button>')+
       '<div class="firow">'+(own?'<button type="button" class="catchip'+(isGuess(n)?' guess':'')+'" data-catopen="'+i+'" aria-expanded="'+(catOpen===n)+'" title="Cambiar músculo"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+' ▾</button>':'<span class="catchip ro"><span class="catdot" style="background:'+cat[2]+'"></span>'+cat[1]+'</span>')+'<span class="meta">'+esc(meta)+'</span></div>'+
       (catOpen===n&&own?'<div class="catpick" role="group" aria-label="Elegir músculo">'+CATS.map(c=>'<button type="button" data-catset="'+c[0]+'" data-ci="'+i+'" aria-pressed="'+(c[0]===cat[0]&&!isGuess(n))+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>':'')+
       trendHTML(n)+
@@ -2166,8 +2191,8 @@ export function startApp(env){
     const patch={};
     if(name!==b.name)patch.name=name;
     if(d.cat!==(b.category||""))patch.category=d.cat;
-    try{if(d.file){const res=await assets.upload(d.file);patch.image_url=res.url;patch.image_type=res.contentType||d.file.type}}
-    catch(e){toast("No se pudo subir el video. Revisa tu conexión.");btn.disabled=false;btn.textContent="Guardar cambios";return}
+    try{if(d.file){const res=await assets.upload(d.file,p=>{btn.textContent="Optimizando video… "+Math.round(p*100)+"%"});btn.textContent="Subiendo…";patch.image_url=res.url;patch.image_type=res.contentType||d.file.type;if(res.info&&res.info!=="original")toast("Video optimizado: "+res.info)}}
+    catch(e){toast(e&&e.message&&/MB/.test(e.message)?e.message:"No se pudo subir el video. Revisa tu conexión.");btn.disabled=false;btn.textContent="Guardar cambios";return}
     const prevN=fichaN;if(patch.name)fichaN=patch.name;
     bkReset();
     if(await bankSave(d.key,patch))toast("Cambios guardados");else{fichaN=prevN;renderFicha()}
