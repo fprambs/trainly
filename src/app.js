@@ -1976,7 +1976,7 @@ export function startApp(env){
     const wk={};entries.filter(e=>parse(e.date)>=mon).forEach(e=>{const n=doneArr(e).filter(Boolean).length;if(n){const c=catOf(e.name);wk[c]=(wk[c]||0)+n}});
     const wkHtml=Object.keys(wk).sort((a,b)=>wk[b]-wk[a]).map(c=>'<span class="catchip"><span class="catdot" style="background:'+CATMAP[c][2]+'"></span>'+CATMAP[c][1]+' · '+wk[c]+'</span>').join("");
     card.innerHTML='<div class="stk-top"><div><b>'+streak+'<small>'+(streak===1?"semana":"semanas")+' seguidas</small></b></div><span>'+mDays+(mDays===1?" día":" días")+' en '+esc(first.toLocaleDateString("es-CL",{month:"long"}))+(mSets?' · '+mSets+' series':'')+'</span></div>'+
-      '<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b class="caltitle">'+esc(title)+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente"'+(atNow?' disabled':'')+'>›</button></div>'+
+      '<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b class="caltitle">'+esc(title)+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente"'+(stkCan(1)?'':' disabled')+'>›</button></div>'+
       '<div class="calclip"><div class="hcal">'+cells+'</div></div>'+
       '<div class="hlegend">Menos <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> Más series'+(planned.size?' · <i class="plan"></i> Planificado':'')+'</div>'+
       (wkHtml?'<div class="wkcats"><span>Esta semana:</span>'+wkHtml+'</div>':'');
@@ -2005,7 +2005,8 @@ export function startApp(env){
     box.addEventListener("pointerup",end);box.addEventListener("pointercancel",end);
     box.addEventListener("click",ev=>{if(Date.now()<blockUntil){ev.stopPropagation();ev.preventDefault()}},true);
   }
-  const stkCan=step=>{const now=parse(today);return new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1)<=new Date(now.getFullYear(),now.getMonth(),1)};
+  // se puede ir hasta 12 meses hacia adelante (para planificar)
+  const stkCan=step=>{const now=parse(today);return new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1)<=new Date(now.getFullYear(),now.getMonth()+12,1)};
   monthSwipe($("streakCard"),".hcal",step=>{
     if(!stkCan(step))return false;
     stkMonth=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1);renderStreak();
