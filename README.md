@@ -60,3 +60,9 @@ npm run lint    # solo la revisión del código
 Las pruebas usan un Supabase simulado (`test/mock-supabase.js`), no tocan datos reales,
 y corren solas en GitHub con cada cambio (`.github/workflows/pruebas.yml`).
 El respaldo semanal de la base está en `.github/workflows/backup.yml`.
+
+## Commits
+En inglés y con [Conventional Commits](https://www.conventionalcommits.org/):
+`feat:` funcionalidad nueva · `fix:` arreglo · `refactor:` reorganizar sin cambiar comportamiento ·
+`style:` diseño o formato · `test:` pruebas · `docs:` documentación · `ci:` GitHub Actions · `chore:` mantenimiento · `perf:` rendimiento.
+Opcionalmente con el área entre paréntesis, por ejemplo `fix(calendar): keep swipe inside the card`.
