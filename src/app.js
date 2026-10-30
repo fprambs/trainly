@@ -2236,14 +2236,20 @@ export function startApp(env){
     const present=new Set(pool.map(catOf)),f=$("catFilter");
     f.hidden=pool.length<4;
     if(catFilter&&!present.has(catFilter))catFilter="";
-    f.innerHTML='<button type="button" data-cf="" aria-pressed="'+(!catFilter)+'">Todos</button>'+CATS.filter(c=>present.has(c[0])).map(c=>'<button type="button" data-cf="'+c[0]+'" aria-pressed="'+(catFilter===c[0])+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("");
+    const cur=catFilter&&CATMAP[catFilter];
+    // en el celular: un solo botón que despliega las categorías; en pantallas grandes se ven todas
+    f.innerHTML='<button type="button" class="cftoggle'+(cur?' on':'')+'" data-cft aria-expanded="'+cfOpen+'">'+(cur?'<span class="catdot" style="background:'+cur[2]+'"></span>'+cur[1]:'Todos los músculos')+'<span class="cfar">▾</span></button>'+
+      '<div class="cfpanel'+(cfOpen?' open':'')+'"><button type="button" data-cf="" aria-pressed="'+(!catFilter)+'">Todos</button>'+CATS.filter(c=>present.has(c[0])).map(c=>'<button type="button" data-cf="'+c[0]+'" aria-pressed="'+(catFilter===c[0])+'"><span class="catdot" style="background:'+c[2]+'"></span>'+c[1]+'</button>').join("")+'</div>';
   }
   $("catAIBtn").addEventListener("click",async()=>{
     const n=await classifyNames(allExerciseNames().filter(x=>{const o=originOf(x);return o!=="comun"&&o!=="profe"}),{force:true,manual:true});
     if(n)toast("Listo: "+n+(n===1?" ejercicio clasificado":" ejercicios clasificados")+". Los que elegiste tú se mantienen.");
     else if(!classifying)toast("No hubo cambios. Los que elegiste tú se mantienen.");
   });
-  $("catFilter").addEventListener("click",e=>{const b=e.target.closest("[data-cf]");if(!b)return;catFilter=b.dataset.cf;renderGrid()});
+  let cfOpen=false;
+  $("catFilter").addEventListener("click",e=>{
+    if(e.target.closest("[data-cft]")){cfOpen=!cfOpen;renderGrid();return}
+    const b=e.target.closest("[data-cf]");if(!b)return;catFilter=b.dataset.cf;cfOpen=false;renderGrid()});
   // ---------- tendencia por ejercicio ----------
   function trendHTML(n){
     const rows=entries.filter(e=>isReal(e)&&norm(e.name)===norm(n));if(!rows.length)return "";
