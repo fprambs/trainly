@@ -21,7 +21,8 @@ export default defineConfig({
   ],
   webServer: {
     command: `npx vite build --outDir dist-test --emptyOutDir && npx vite preview --outDir dist-test --port ${PORT} --strictPort --host 127.0.0.1`,
-    env: { VITE_MOCK: "1" },
+    // Supabase simulado: no usa estos valores, pero la app exige que existan
+    env: { VITE_MOCK: "1", VITE_SUPABASE_URL: "http://mock.local", VITE_SUPABASE_ANON_KEY: "mock" },
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000
