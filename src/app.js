@@ -1806,11 +1806,28 @@ export function startApp(env){
     ctx.fillStyle=C.muted;ctx.font="500 26px "+BODY;ctx.fillText("Trainly",P,y+58);ctx.textAlign="right";ctx.fillText(D.foot,W-P,y+58);ctx.textAlign="left";
     return await new Promise((res,rej)=>{try{cv.toBlob(b=>b?res(b):rej(new Error("blob")),"image/png")}catch(e){rej(e)}});
   }
+  // formato historia de Instagram (1080×1920, 9:16): la tarjeta centrada sobre un fondo con los colores de la app
+  async function buildStory(withImages){
+    const card=await buildPNG(withImages);
+    const bmp=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=URL.createObjectURL(card)});
+    const W=1080,H=1920,cv=document.createElement("canvas");cv.width=W;cv.height=H;const ctx=cv.getContext("2d");
+    const acc=cssVar("--accent")||"#5B4FE6",dark="#0E0F16";
+    ctx.fillStyle=dark;ctx.fillRect(0,0,W,H);
+    const glow=(x,y,r,c,a)=>{const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,c);g.addColorStop(1,"transparent");ctx.globalAlpha=a;ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1};
+    glow(160,220,900,acc,.55);glow(980,1700,900,acc,.35);
+    // tarjeta: ancho máximo 940 y alto máximo dejando aire para las zonas de la interfaz de Instagram
+    const maxW=940,maxH=H-420,sc=Math.min(maxW/bmp.width,maxH/bmp.height),cw=bmp.width*sc,ch=bmp.height*sc;
+    const x=(W-cw)/2,y=Math.max(210,(H-ch)/2),r=44;
+    ctx.save();ctx.shadowColor="rgba(0,0,0,.45)";ctx.shadowBlur=60;ctx.shadowOffsetY=24;ctx.fillStyle=dark;rr(ctx,x,y,cw,ch,r);ctx.fill();ctx.restore();
+    ctx.save();rr(ctx,x,y,cw,ch,r);ctx.clip();ctx.drawImage(bmp,x,y,cw,ch);ctx.restore();
+    URL.revokeObjectURL(bmp.src);
+    return await new Promise((res,rej)=>{try{cv.toBlob(b=>b?res(b):rej(new Error("blob")),"image/png")}catch(e){rej(e)}});
+  }
   $("sumImg").addEventListener("click",async()=>{
     const b=$("sumImg");b.disabled=true;b.textContent="Generando…";
     try{
       let blob;
-      try{blob=await buildPNG(true)}catch(e){blob=await buildPNG(false)} // si alguna miniatura bloquea el lienzo, sale sin miniaturas
+      try{blob=await buildStory(true)}catch(e){blob=await buildStory(false)} // si alguna miniatura bloquea el lienzo, sale sin miniaturas
       const fname="sesion-"+sumState.date+".png";
       if(downloads){
         try{await downloads.save({filename:fname,data:blob});toast("Imagen guardada");return}
@@ -1819,7 +1836,7 @@ export function startApp(env){
       // sin descargas: mostrar la imagen para guardarla con presión larga
       const url=URL.createObjectURL(blob);$("sumPrevImg").src=url;$("sumPrev").hidden=false;$("sumPrev").scrollIntoView({block:"nearest",behavior:"smooth"});
     }catch(e){console.error("resumen png",e);toast("No se pudo generar la imagen. Inténtalo de nuevo.")}
-    finally{b.disabled=false;b.textContent="Descargar imagen"}
+    finally{b.disabled=false;b.textContent="Imagen para historia"}
   });
   function openSummary(open){
     if(open){sumState={date:$("date").value||today,gi:null};renderSummary();$("sumOv").hidden=false;$("sumPrev").hidden=true;const x=$("sumCard").querySelector(".shx");if(x)x.focus()}
