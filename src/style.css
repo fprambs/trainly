@@ -1235,3 +1235,24 @@ label.ps{white-space:nowrap}
 /* deslizar entre días también en el espacio vacío bajo el contenido (tablet): el navegador no debe tomar el gesto horizontal */
 html:has(body[data-tab="anotar"]),body[data-tab="anotar"]{touch-action:pan-y pinch-zoom}
 body[data-tab="anotar"] .wrap{min-height:100dvh}
+/* tablet/PC: calendarios con celdas de tamaño razonable (no cuadrados gigantes) */
+@media (min-width:600px){
+  .calgrid button,.hcal button{aspect-ratio:auto;height:56px}
+  .calpop{max-width:480px;width:100%;margin-left:auto;margin-right:auto}
+}
+
+/* celular chico: etiquetas sin cortes raros y descanso más compacto */
+.sidepill{white-space:nowrap}
+.smbox small{white-space:nowrap}
+@media (max-height:700px){
+  .tabs .rest{padding:10px 12px}
+  .tabs .rest .rbar{margin:6px 0}
+  .rnext{font-size:.8rem}
+  .rnextbtn{margin-top:6px;min-height:42px}
+  #rTime{font-size:2rem}
+}
+
+/* con el descanso abierto, ninguna pestaña queda tapada por la barra de abajo */
+body.resting:not([data-tab="anotar"]) .wrap{padding-bottom:calc(var(--dock,72px) + 24px)!important}
+/* fuera de Hoy, el descanso se muestra compacto (solo tiempo y botones) para no tapar la pantalla */
+body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .tabs .rest .rpre{display:none!important}
