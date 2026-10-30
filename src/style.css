@@ -1297,3 +1297,9 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
 }
 /* barra de pestañas: el recuadro de la pestaña activa con el mismo aire arriba y abajo */
 .tabs .in{padding-top:6px}
+/* resumen: si es más alto que la pantalla, se desplaza completo (antes se cortaba arriba y abajo) */
+.sumov{justify-content:flex-start;padding-top:max(20px,calc(env(safe-area-inset-top,0px) + 12px));padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
+.sumov>.sumcard{margin-top:auto}
+#sumHint{margin-bottom:auto}
+.sumov>#sumPrev:not([hidden]){margin-bottom:auto}
+.sgrid small{white-space:nowrap;letter-spacing:.04em;font-size:.62rem}
