@@ -37,21 +37,37 @@ export async function start(page, { seed = true, coach = false } = {}) {
 // sin desplazamiento lateral, barra de abajo dentro de la pantalla
 export async function layoutOk(page) {
   const r = await page.evaluate(() => {
-    const t = document.querySelector(".tabs"), b = t && t.getBoundingClientRect();
-    return { sw: document.documentElement.scrollWidth, w: innerWidth, h: innerHeight, tabsBottom: b ? b.bottom : 0, tabsVisible: !!t && getComputedStyle(t).display !== "none" };
+    const t = document.querySelector(".tabs"),
+      b = t && t.getBoundingClientRect();
+    return {
+      sw: document.documentElement.scrollWidth,
+      w: innerWidth,
+      h: innerHeight,
+      tabsBottom: b ? b.bottom : 0,
+      tabsVisible: !!t && getComputedStyle(t).display !== "none"
+    };
   });
   expect(r.sw, "la página no debe desplazarse hacia los lados").toBeLessThanOrEqual(r.w + 1);
-  if (r.tabsVisible) expect(r.tabsBottom, "la barra de abajo debe quedar dentro de la pantalla").toBeLessThanOrEqual(r.h + 2);
+  if (r.tabsVisible)
+    expect(r.tabsBottom, "la barra de abajo debe quedar dentro de la pantalla").toBeLessThanOrEqual(r.h + 2);
 }
 
 // gesto táctil horizontal (dx<0 = hacia la izquierda)
 export async function swipe(page, x, y, dx) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
-  for (let i = 1; i <= 10; i++) { await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + dx * i / 10, y }] }); await page.waitForTimeout(16); }
+  for (let i = 1; i <= 10; i++) {
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + (dx * i) / 10, y }] });
+    await page.waitForTimeout(16);
+  }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await page.waitForTimeout(500);
 }
 
-export const localISO = (d = new Date()) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-export const addDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return localISO(d); };
+export const localISO = (d = new Date()) =>
+  d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+export const addDays = n => {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return localISO(d);
+};
