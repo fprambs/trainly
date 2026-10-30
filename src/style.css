@@ -1276,3 +1276,6 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
 /* días futuros del mes: con caja (se pueden planificar); los de otro mes: sin caja y más tenues */
 .hcal button.fut{background:var(--surface2);color:var(--muted)}
 .hcal button.other{opacity:.45}
+/* filtro por músculo: todas las categorías a la vista (en varias líneas), sin desplazar de lado */
+.catfilter{flex-wrap:wrap;overflow:visible;gap:6px}
+.catfilter button{min-height:40px;padding:4px 12px;font-size:.85rem}
