@@ -1303,3 +1303,6 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
 #sumHint{margin-bottom:auto}
 .sumov>#sumPrev:not([hidden]){margin-bottom:auto}
 .sgrid small{white-space:nowrap;letter-spacing:.04em;font-size:.62rem}
+/* botón +: más sobrio (sin resplandor de color, tono algo más apagado y un poco más chico) */
+.fab{width:54px;height:54px;border-radius:16px;background:color-mix(in srgb,var(--accent) 82%,var(--bg));box-shadow:0 4px 14px rgba(0,0,0,.28)}
+.fab svg{width:26px;height:26px}
