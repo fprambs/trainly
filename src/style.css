@@ -1232,3 +1232,6 @@ label.ps{white-space:nowrap}
 .lb img,.lb video{width:min(100%,calc(74vh * 16 / 9));max-height:74vh;aspect-ratio:16/9;height:auto;object-fit:contain;background:var(--media,#fff)}
 .lb:not([hidden]){animation:lbin .16s ease-out}
 @keyframes lbin{from{opacity:0}}
+/* deslizar entre días también en el espacio vacío bajo el contenido (tablet): el navegador no debe tomar el gesto horizontal */
+html:has(body[data-tab="anotar"]),body[data-tab="anotar"]{touch-action:pan-y pinch-zoom}
+body[data-tab="anotar"] .wrap{min-height:100dvh}
