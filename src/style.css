@@ -1279,3 +1279,19 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
 /* filtro por músculo: todas las categorías a la vista (en varias líneas), sin desplazar de lado */
 .catfilter{flex-wrap:wrap;overflow:visible;gap:6px}
 .catfilter button{min-height:40px;padding:4px 12px;font-size:.85rem}
+
+/* filtro por músculo compacto */
+.catfilter{flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:8px}
+.cftoggle{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--ink);font-weight:600;font-size:.92rem;width:max-content;max-width:100%}
+.cftoggle.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.cftoggle .cfar{color:var(--muted);font-size:.8rem;transition:transform .15s}
+.cftoggle[aria-expanded="true"] .cfar{transform:rotate(180deg)}
+.cfpanel{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.cfpanel.open{display:grid}
+.cfpanel button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 6px;border-radius:10px;font-size:.84rem;font-weight:600;background:var(--surface);white-space:nowrap}
+.cfpanel button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+@media (min-width:600px){
+  .cftoggle{display:none}
+  .cfpanel{display:flex!important;flex-wrap:wrap}
+  .cfpanel button{padding:4px 14px;border-radius:999px}
+}
