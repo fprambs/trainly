@@ -1599,8 +1599,8 @@ export function startApp(env){
       cells+='<button type="button" class="'+cls+'" data-cd="'+ds+'" aria-label="'+esc(dt.toLocaleDateString("es-CL",{weekday:"long",day:"numeric",month:"long"}))+(has.has(ds)?", con registros":"")+'"'+(ds===sel?' aria-current="date"':'')+'>'+dt.getDate()+'</button>';
     }
     $("calPop").innerHTML='<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b>'+esc(first.toLocaleDateString("es-CL",{month:"long",year:"numeric"}))+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente">›</button></div>'+
-      '<div class="calgrid">'+["L","M","M","J","V","S","D"].map(x=>'<span class="wd">'+x+'</span>').join("")+cells+'</div>'+
-      '<div class="calfoot"><span><i></i>Días con registros</span><button type="button" class="btnlike" data-cd="'+today+'">Volver a hoy</button></div>';
+      '<div class="calclip"><div class="calgrid">'+["L","M","M","J","V","S","D"].map(x=>'<span class="wd">'+x+'</span>').join("")+cells+'</div>'+
+      '</div><div class="calfoot"><span><i></i>Días con registros</span><button type="button" class="btnlike" data-cd="'+today+'">Volver a hoy</button></div>';
   }
   $("dayPick").addEventListener("click",()=>openCal($("calPop").hidden));
   $("calPop").addEventListener("click",e=>{
@@ -1977,18 +1977,20 @@ export function startApp(env){
     const wkHtml=Object.keys(wk).sort((a,b)=>wk[b]-wk[a]).map(c=>'<span class="catchip"><span class="catdot" style="background:'+CATMAP[c][2]+'"></span>'+CATMAP[c][1]+' · '+wk[c]+'</span>').join("");
     card.innerHTML='<div class="stk-top"><div><b>'+streak+'<small>'+(streak===1?"semana":"semanas")+' seguidas</small></b></div><span>'+mDays+(mDays===1?" día":" días")+' en '+esc(first.toLocaleDateString("es-CL",{month:"long"}))+(mSets?' · '+mSets+' series':'')+'</span></div>'+
       '<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b class="caltitle">'+esc(title)+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente"'+(atNow?' disabled':'')+'>›</button></div>'+
-      '<div class="hcal">'+cells+'</div>'+
+      '<div class="calclip"><div class="hcal">'+cells+'</div></div>'+
       '<div class="hlegend">Menos <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> Más series'+(planned.size?' · <i class="plan"></i> Planificado':'')+'</div>'+
       (wkHtml?'<div class="wkcats"><span>Esta semana:</span>'+wkHtml+'</div>':'');
   }
   // deslizar a los lados sobre un calendario cambia de mes (táctil)
-  function monthSwipe(box,gridSel,go){
+  function monthSwipe(box,gridSel,go,canGo){
     let s=null,blockUntil=0;
     box.addEventListener("pointerdown",ev=>{if(ev.pointerType==="mouse"||!ev.target.closest(gridSel))return;s={x0:ev.clientX,y0:ev.clientY,id:ev.pointerId,dir:0,dx:0}},{passive:true});
     box.addEventListener("pointermove",ev=>{
       if(!s||ev.pointerId!==s.id)return;const dx=ev.clientX-s.x0,dy=ev.clientY-s.y0;
       if(!s.dir){if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.3)s.dir=1;else if(Math.abs(dy)>12){s=null;return}else return}
-      s.dx=dx;const g=box.querySelector(gridSel);if(g){g.style.transition="none";g.style.transform="translateX("+dx*.5+"px)";g.style.opacity=String(Math.max(.4,1-Math.abs(dx)/500))}
+      s.dx=dx;const g=box.querySelector(gridSel);
+      const blocked=canGo&&!canGo(dx<0?1:-1);
+      if(g){g.style.transition="none";g.style.transform="translateX("+(blocked?Math.sign(dx)*Math.min(24,Math.abs(dx)*.15):dx*.6)+"px)";g.style.opacity=blocked?"":String(Math.max(.35,1-Math.abs(dx)/400))}
     },{passive:true});
     const end=ev=>{
       if(!s||(ev&&ev.pointerId!==s.id))return;const s0=s;s=null;if(!s0.dir)return;
@@ -2003,11 +2005,11 @@ export function startApp(env){
     box.addEventListener("pointerup",end);box.addEventListener("pointercancel",end);
     box.addEventListener("click",ev=>{if(Date.now()<blockUntil){ev.stopPropagation();ev.preventDefault()}},true);
   }
+  const stkCan=step=>{const now=parse(today);return new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1)<=new Date(now.getFullYear(),now.getMonth(),1)};
   monthSwipe($("streakCard"),".hcal",step=>{
-    const now=parse(today),nm=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1);
-    if(nm>new Date(now.getFullYear(),now.getMonth(),1))return false;
-    stkMonth=nm;renderStreak();
-  });
+    if(!stkCan(step))return false;
+    stkMonth=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1);renderStreak();
+  },stkCan);
   monthSwipe($("calPop"),".calgrid",step=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+step,1);renderCal()});
   $("streakCard").addEventListener("click",e=>{const b=e.target.closest("[data-cm]");if(!b)return;e.stopPropagation();stkMonth=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+Number(b.dataset.cm),1);renderStreak()});
   $("history").addEventListener("click",e=>{const b=e.target.closest("[data-hsave]");if(!b)return;showTab("anotar");openSaveFor({date:b.dataset.hsave,g:null})});

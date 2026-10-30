@@ -1261,3 +1261,10 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
 .hcal button.other{opacity:.4}
 .hcal,.calgrid{touch-action:pan-y}
 .calhead .caltitle{white-space:nowrap;font-size:clamp(1rem,4.6vw,1.35rem)}
+
+/* el calendario se desliza dentro de su propio marco, sin salirse de la tarjeta */
+.calclip{overflow:hidden;margin:0 -4px;padding:0 4px}
+.calclip>.hcal,.calclip>.calgrid{will-change:transform}
+/* días de otro mes: claramente distintos (sin fondo, texto tenue, punto si entrenaste) */
+.hcal button.other,.calgrid button.other{background:transparent!important;color:var(--muted)!important;font-weight:500;opacity:.6;box-shadow:none!important;outline:0!important;position:relative}
+.hcal button.other.l1::after,.hcal button.other.l2::after,.hcal button.other.l3::after{content:"";position:absolute;left:50%;bottom:16%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--accent)}
