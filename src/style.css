@@ -1295,3 +1295,5 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
   .cfpanel{display:flex!important;flex-wrap:wrap}
   .cfpanel button{padding:4px 14px;border-radius:999px}
 }
+/* barra de pestañas: el recuadro de la pestaña activa con el mismo aire arriba y abajo */
+.tabs .in{padding-top:6px}
