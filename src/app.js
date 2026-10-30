@@ -1957,13 +1957,19 @@ export function startApp(env){
     const y=stkMonth.getFullYear(),m=stkMonth.getMonth(),first=new Date(y,m,1),nDays=new Date(y,m+1,0).getDate(),lead=(first.getDay()+6)%7;
     const lv=n=>!n?"":n<6?"l1":n<13?"l2":"l3";
     let cells=["L","M","M","J","V","S","D"].map(L=>'<span class="cdh">'+L+'</span>').join("");
-    for(let k=0;k<lead;k++)cells+='<span></span>';
+    // días del mes anterior/siguiente para completar la primera y última semana
+    const cell=(dt,other)=>{const ds=iso(dt),n=setsBy[ds]||0;
+      const cls=[other?"other":"",lv(n),ds===today?"tdy":"",ds>today?"fut":"",planned.has(ds)?"plan":""].filter(Boolean).join(" ");
+      return '<button type="button" class="'+cls+'" data-hd="'+ds+'" aria-label="'+esc(fmtDay(ds))+(n?": "+n+(n===1?" serie":" series"):planned.has(ds)?": planificado":": sin entrenar")+'">'+dt.getDate()+'</button>'};
+    for(let k=lead;k>0;k--)cells+=cell(new Date(y,m,1-k),true);
     let mDays=0,mSets=0;
     for(let d=1;d<=nDays;d++){
       const ds=iso(new Date(y,m,d)),n=setsBy[ds]||0;if(n){mDays++;mSets+=n}
       const cls=[lv(n),ds===today?"tdy":"",ds>today?"fut":"",planned.has(ds)?"plan":""].filter(Boolean).join(" ");
       cells+='<button type="button" class="'+cls+'" data-hd="'+ds+'" aria-label="'+esc(fmtDay(ds))+(n?": "+n+(n===1?" serie":" series"):planned.has(ds)?": planificado":": sin entrenar")+'">'+d+'</button>';
     }
+    const trail=(7-(lead+nDays)%7)%7;
+    for(let k=1;k<=trail;k++)cells+=cell(new Date(y,m+1,k),true);
     let title=first.toLocaleDateString("es-CL",{month:"long",year:"numeric"});title=title.charAt(0).toUpperCase()+title.slice(1);
     const atNow=y===now.getFullYear()&&m===now.getMonth();
     // músculos trabajados esta semana
@@ -1975,6 +1981,34 @@ export function startApp(env){
       '<div class="hlegend">Menos <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> Más series'+(planned.size?' · <i class="plan"></i> Planificado':'')+'</div>'+
       (wkHtml?'<div class="wkcats"><span>Esta semana:</span>'+wkHtml+'</div>':'');
   }
+  // deslizar a los lados sobre un calendario cambia de mes (táctil)
+  function monthSwipe(box,gridSel,go){
+    let s=null,blockUntil=0;
+    box.addEventListener("pointerdown",ev=>{if(ev.pointerType==="mouse"||!ev.target.closest(gridSel))return;s={x0:ev.clientX,y0:ev.clientY,id:ev.pointerId,dir:0,dx:0}},{passive:true});
+    box.addEventListener("pointermove",ev=>{
+      if(!s||ev.pointerId!==s.id)return;const dx=ev.clientX-s.x0,dy=ev.clientY-s.y0;
+      if(!s.dir){if(Math.abs(dx)>12&&Math.abs(dx)>Math.abs(dy)*1.3)s.dir=1;else if(Math.abs(dy)>12){s=null;return}else return}
+      s.dx=dx;const g=box.querySelector(gridSel);if(g){g.style.transition="none";g.style.transform="translateX("+dx*.5+"px)";g.style.opacity=String(Math.max(.4,1-Math.abs(dx)/500))}
+    },{passive:true});
+    const end=ev=>{
+      if(!s||(ev&&ev.pointerId!==s.id))return;const s0=s;s=null;if(!s0.dir)return;
+      blockUntil=Date.now()+350;
+      const g=box.querySelector(gridSel),step=s0.dx<0?1:-1;
+      const ok=Math.abs(s0.dx)>50&&go(step)!==false;
+      const g2=box.querySelector(gridSel);
+      if(ok&&g2){g2.style.transition="none";g2.style.transform="translateX("+(step*30)+"%)";g2.style.opacity="0";
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{g2.style.transition="transform .22s cubic-bezier(.2,.8,.2,1),opacity .22s";g2.style.transform="";g2.style.opacity=""}))}
+      else if(g){g.style.transition="transform .2s,opacity .2s";g.style.transform="";g.style.opacity=""}
+    };
+    box.addEventListener("pointerup",end);box.addEventListener("pointercancel",end);
+    box.addEventListener("click",ev=>{if(Date.now()<blockUntil){ev.stopPropagation();ev.preventDefault()}},true);
+  }
+  monthSwipe($("streakCard"),".hcal",step=>{
+    const now=parse(today),nm=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+step,1);
+    if(nm>new Date(now.getFullYear(),now.getMonth(),1))return false;
+    stkMonth=nm;renderStreak();
+  });
+  monthSwipe($("calPop"),".calgrid",step=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+step,1);renderCal()});
   $("streakCard").addEventListener("click",e=>{const b=e.target.closest("[data-cm]");if(!b)return;e.stopPropagation();stkMonth=new Date(stkMonth.getFullYear(),stkMonth.getMonth()+Number(b.dataset.cm),1);renderStreak()});
   $("history").addEventListener("click",e=>{const b=e.target.closest("[data-hsave]");if(!b)return;showTab("anotar");openSaveFor({date:b.dataset.hsave,g:null})});
   $("streakCard").addEventListener("click",e=>{const b=e.target.closest("[data-hd]");if(!b)return;showTab("anotar");goDay(b.dataset.hd)});
