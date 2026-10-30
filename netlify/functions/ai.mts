@@ -4,7 +4,7 @@
 import type { Context } from "@netlify/functions";
 
 const CATS = ["piernas", "gluteos", "espalda", "pecho", "hombros", "brazos", "core", "cardio", "otro"];
-const DAILY_LIMIT = 60; // consultas por persona por día (el plan gratis de la IA es compartido por toda la app)
+const DAILY_LIMIT = 40; // consultas por persona por día (el plan gratis de la IA es compartido por toda la app)
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 const norm = (s: string) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -96,7 +96,7 @@ export default async (req: Request, context: Context) => {
       if (c.ok) (await c.json()).forEach((r: any) => { cached[r.key] = r.category; });
       const missing = names.filter(n => !cached[keyOf(n)]);
       if (missing.length) {
-        if (!(await take(SB_URL, sbHeaders))) return json({ error: "Llegaste al límite diario de IA" }, 429);
+        const t = await take(SB_URL, sbHeaders, 1); if (t !== true) return json({ error: t }, 429);
         const prompt = "Eres entrenador de gimnasio. Clasifica cada ejercicio en UN grupo muscular principal, de forma general. " +
           "Grupos (usa solo estas claves): piernas (cuádriceps, isquiotibiales, pantorrillas: sentadillas, prensa, zancadas, curl femoral, extensión de pierna, peso muerto), " +
           "gluteos (hip thrust, puente de glúteo, abducción, patada de glúteo), espalda (remos con peso, jalones, dominadas, pullover, lumbares), pecho (press banca, aperturas, flexiones, fondos de pecho), " +
@@ -117,7 +117,7 @@ export default async (req: Request, context: Context) => {
       return json({ result });
     }
 
-    if (!(await take(SB_URL, sbHeaders))) return json({ error: "Llegaste al límite diario de IA" }, 429);
+    const t = await take(SB_URL, sbHeaders, task === "analyze" ? 4 : 1); if (t !== true) return json({ error: t }, 429);
 
     // 3) identificar un ejercicio a partir de una descripción
     if (task === "identify") {
@@ -149,8 +149,17 @@ export default async (req: Request, context: Context) => {
   }
 };
 
-async function take(SB_URL: string, headers: Record<string, string>) {
-  const r = await fetch(`${SB_URL}/rest/v1/rpc/ai_take`, { method: "POST", headers, body: JSON.stringify({ max_per_day: DAILY_LIMIT }) });
-  if (!r.ok) return true; // si falla el contador, no bloquear
-  return (await r.json()) !== false;
+// Cuota de IA: por persona y total de la app (los límites están fijos en la base: ai_take_cost).
+// Costo por tarea: clasificar/identificar 1, analizar 4 (usa muchas más palabras).
+async function take(SB_URL: string, headers: Record<string, string>, cost = 1): Promise<true | string> {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/ai_take_cost`, { method: "POST", headers, body: JSON.stringify({ cost }) });
+  if (r.ok) {
+    const v = await r.json();
+    if (v === "ok") return true;
+    return v === "global" ? "La IA de la app llegó a su límite de hoy. Vuelve mañana." : "Llegaste a tu límite diario de IA. Vuelve mañana.";
+  }
+  // respaldo: contador antiguo por persona
+  const o = await fetch(`${SB_URL}/rest/v1/rpc/ai_take`, { method: "POST", headers, body: JSON.stringify({ max_per_day: DAILY_LIMIT }) });
+  if (!o.ok) return true; // si falla el contador, no bloquear
+  return (await o.json()) !== false ? true : "Llegaste a tu límite diario de IA. Vuelve mañana.";
 }
