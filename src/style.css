@@ -1256,3 +1256,8 @@ body[data-tab="anotar"] .wrap{min-height:100dvh}
 body.resting:not([data-tab="anotar"]) .wrap{padding-bottom:calc(var(--dock,72px) + 24px)!important}
 /* fuera de Hoy, el descanso se muestra compacto (solo tiempo y botones) para no tapar la pantalla */
 body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .tabs .rest .rpre{display:none!important}
+
+/* calendarios: días de otros meses atenuados; el gesto horizontal es del calendario */
+.hcal button.other{opacity:.4}
+.hcal,.calgrid{touch-action:pan-y}
+.calhead .caltitle{white-space:nowrap;font-size:clamp(1rem,4.6vw,1.35rem)}
