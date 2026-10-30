@@ -1,0 +1,45 @@
+# Respaldo semanal de la base de datos de Trainly (Supabase).
+# Guarda una copia cifrada como "artifact" de GitHub Actions por 90 días.
+# Requiere 2 secretos en GitHub (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL     → Supabase: Connect → "Session pooler" (URI, con tu contraseña de la base)
+#   BACKUP_PASSPHRASE   → una frase larga que inventes; sin ella no se puede abrir el respaldo
+# Para restaurar:  gpg -d trainly-AAAA-MM-DD.sql.gz.gpg | gunzip > respaldo.sql
+name: Respaldo semanal
+on:
+  schedule:
+    - cron: "17 7 * * 1"   # lunes 04:17 hora de Chile
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Revisar secretos
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DB" ] || [ -z "$PASS" ]; then
+            echo "::error::Faltan los secretos SUPABASE_DB_URL y/o BACKUP_PASSPHRASE"; exit 1; fi
+      - name: Copiar la base (pg_dump 17)
+        env:
+          DB: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          docker run --rm -e DB postgres:17 sh -c 'pg_dump "$DB" --no-owner --no-privileges -n public -n auth -n storage' > dump.sql
+          test -s dump.sql
+          echo "Tamaño: $(du -h dump.sql | cut -f1)"
+      - name: Comprimir y cifrar
+        env:
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          F="trainly-$(date -u +%F).sql.gz.gpg"
+          gzip -9 -c dump.sql | gpg --batch --yes --symmetric --cipher-algo AES256 --passphrase "$PASS" -o "$F"
+          rm -f dump.sql
+          echo "FILE=$F" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.FILE }}
+          path: ${{ env.FILE }}
+          retention-days: 90

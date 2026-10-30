@@ -402,3 +402,25 @@ alter table public.entries add column if not exists circuit boolean not null def
 -- peso por mancuerna: el ejercicio se anota con el peso de UNA mancuerna (el volumen cuenta las dos).
 -- Default en el banco; cada atleta puede cambiarlo en athletes.rest_cfg.side {key: true/false}
 alter table public.bank_exercises add column if not exists per_side boolean not null default false;
+
+-- IA: cuota por persona y total de la app, con costo por tarea (límites fijos aquí, no los decide la app)
+create table if not exists public.ai_usage_global(day date primary key, n int not null default 0);
+alter table public.ai_usage_global enable row level security;
+create or replace function public.ai_take_cost(cost int) returns text
+language plpgsql security definer set search_path = public as $$
+declare cur int; g int; c int := greatest(1, least(cost, 10));
+  per_user constant int := 40; total constant int := 800;
+begin
+  if auth.uid() is null then return 'auth'; end if;
+  select n into cur from ai_usage where user_id = auth.uid() and day = current_date;
+  if coalesce(cur,0) + c > per_user then return 'user'; end if;
+  select n into g from ai_usage_global where day = current_date;
+  if coalesce(g,0) + c > total then return 'global'; end if;
+  insert into ai_usage(user_id, day, n) values (auth.uid(), current_date, c)
+  on conflict (user_id, day) do update set n = ai_usage.n + c;
+  insert into ai_usage_global(day, n) values (current_date, c)
+  on conflict (day) do update set n = ai_usage_global.n + c;
+  return 'ok';
+end $$;
+revoke all on function public.ai_take_cost(int) from public, anon;
+grant execute on function public.ai_take_cost(int) to authenticated;
