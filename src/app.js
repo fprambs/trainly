@@ -1,8 +1,10 @@
 import { optimizeVideo, optimizeImage, posterURL } from "./media.js";
 import { buildStory } from "./lib/share-image.js";
 import { daySwipe, monthSwipe } from "./lib/gestures.js";
-import { ordOf, doneArr, byCreated, sessionStart, GAP, firstAt, splitSessions, sessLabel, sessDur } from "./lib/sessions.js";
+import { ordOf, doneArr, byCreated, sessionStart, GAP, splitSessions, sessLabel, sessDur } from "./lib/sessions.js";
 import { buildCSV } from "./lib/csv.js";
+import { CATS, CATMAP, guessCat } from "./lib/categories.js";
+import { progressSVG, trendSVG } from "./lib/charts.js";
 import { pad, iso, parse, fmtDay, fmtShort, fmtMonth, esc, norm, imgKey, fmtN, fmtTime, fmtDist, e1rm, r1, fmtDur, fmtSecs, fmtSess, fmtClock } from "./lib/format.js";
 export function startApp(env){
 
@@ -476,14 +478,6 @@ export function startApp(env){
       if(BK.preview)URL.revokeObjectURL(BK.preview);BK.file=f;BK.preview=URL.createObjectURL(f);BK.ptype=f.type;renderFicha();return}
     if(pendingName)await uploadFor(pendingName,f);
   });
-  async function uploadBank(key,file){
-    if(!assets||!file)return;
-    if(!/^(image|video)\//.test(file.type)){toast("Ese archivo no es una imagen ni un video.");return}
-    if(file.size>200*1024*1024){toast("El archivo pesa más de 200 MB. Prueba con uno más liviano.");return}
-    toast("Subiendo video…");
-    try{const res=await assets.upload(file,p=>toast("Optimizando video… "+Math.round(p*100)+"%"));if(await bankSave(key,{image_url:res.url,image_type:res.contentType||file.type}))toast("Video actualizado en el banco común")}
-    catch(e){toast("No se pudo subir. Revisa tu conexión e inténtalo de nuevo.")}
-  }
   // ---------- subidas en segundo plano: se puede seguir usando la app ----------
   const jobs=[];
   function renderJobs(){
@@ -592,7 +586,6 @@ export function startApp(env){
       (!demo&&e.sets>0?setsHTML(e):'')+
       '</div>';
   }
-  const GRIP='<svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
   // ---------- reordenar arrastrando ----------
   let drag=null,lastDragEnd=0;
   // mantener presionado ~0,5 s sobre el ejercicio para tomarlo; si el dedo se mueve antes, es scroll
@@ -722,7 +715,6 @@ export function startApp(env){
   const planText=e=>[e.weight!=null?String(e.weight).replace(".",",")+KG(e):"",e.reps!=null?e.reps+" reps":"",e.dist!=null?fmtDist(e.dist):"",e.mins!=null?fmtTime(e.mins):""].filter(Boolean).join(" · ");
   function getMins(){const a=$("tMin").value,b=$("tSec").value;if(a===""&&b==="")return null;return ((+a||0)*60+(+b||0))/60}
   function setMins(v){if(v==null){$("tMin").value="";$("tSec").value="";return}const s=Math.round(v*60);$("tMin").value=Math.floor(s/60);$("tSec").value=s%60}
-  function parseTime(v){v=(v||"").trim();if(!v)return null;if(v.includes(":")){const [m,s]=v.split(":");return ((+m||0)*60+(+s||0))/60}const n=Number(v.replace(",","."));return isNaN(n)?null:n}
   // valor real logrado: el máximo de las series marcadas; si no hay series marcadas, lo anotado
   function valOf(e,key){
     const dd=(Array.isArray(e.done)?e.done:[]).filter(Boolean);
@@ -732,15 +724,6 @@ export function startApp(env){
     const k={weight:"w",reps:"r",mins:"t",dist:"m"}[key];
     const vs=(Array.isArray(e.done)?e.done:[]).filter(Boolean).map(d=>d[k]).filter(v=>v!=null);
     return vs.length?Math.max(...vs):(e[key]??null);
-  }
-  function cmp(e,d){
-    const pairs=[[e.weight,d.w],[e.reps,d.r],[e.dist,d.m]];
-    for(const [a,b] of pairs){if(a!=null&&b!=null&&a!==b)return b>a?1:-1}
-    if(e.mins!=null&&e.dist==null&&d.m!=null)return 0; // por tiempo con metros: el tiempo es el formato, no la marca
-    // tiempo: con distancia fija, menos tiempo es mejor; sin distancia (ej. plancha), más tiempo es mejor
-    if(e.mins!=null&&d.t!=null&&Math.round(e.mins*60)!==Math.round(d.t*60))return (e.dist!=null?d.t<e.mins:d.t>e.mins)?1:-1;
-    if(e.mins==null&&e.dist!=null&&d.t!=null)return 0;
-    return 0;
   }
   // cada valor de la serie con su flecha: ↑ mejor que lo pedido, ↓ peor
   // referencia para comparar cada valor: lo pedido; si no se pidió (ej. "3×15" sin peso), la serie anterior
@@ -810,11 +793,6 @@ export function startApp(env){
       const title=p.dir?(NAME[p.k]+": "+(p.dir>0?"subiste":"bajaste")+" respecto a "+(p.ref.src==="plan"?"lo pedido":"la serie "+p.ref.src.slice(1))+" ("+refTxt+")"):(p.ref?"Igual que "+(p.ref.src==="plan"?"lo pedido":"la serie "+p.ref.src.slice(1)):NAME[p.k]);
       return '<span class="mchip'+cls+'" title="'+esc(title)+'">'+ICON[p.k]+'<b>'+esc(val)+'</b>'+(unit?'<small>'+unit+'</small>':'')+(p.dir?'<i>'+(p.dir>0?"↑":"↓")+'</i><s>'+esc(vs)+esc(refTxt)+'</s>':'')+'</span>';
     }).join("");
-  }
-  function pillHTML(e,d,i){
-    if(!d)return String(i+1);
-    const P=setParts(e,d),st=setState(P);
-    return (st==="done"?"✓ ":"")+P.map((p,k)=>(k&&!p.txt.startsWith("×")?'<span class="sep">·</span>':'')+esc(p.txt)+(p.dir>0?'<b class="ar up">↑</b>':p.dir<0?'<b class="ar dn">↓</b>':'')).join("");
   }
   const isRunning=(id,i)=>running&&running.id===id&&running.i===i;
   const expandedSets=new Set();
@@ -1461,11 +1439,6 @@ export function startApp(env){
     $("idRow").hidden=!sampler;$("catIdRow").hidden=!sampler;
   }
   // duración: desde la primera a la última serie marcada del día
-  function sessMin(list){
-    const ats=list.flatMap(e=>(Array.isArray(e.done)?e.done:[]).filter(d=>d&&d.at).map(d=>d.at));
-    if(ats.length<2)return null;
-    return Math.max(1,Math.round((Math.max(...ats)-Math.min(...ats))/60000));
-  }
   // separa un día en sesiones: si pasan más de 30 min sin marcar series, empieza otra
   function sessListHTML(groups){
     if(groups.length<2)return groups[0].entries.map(e=>entryHTML(e)).join("");
@@ -1960,25 +1933,7 @@ export function startApp(env){
     const fv=v=>key==="mins"||key==="best"?fmtDur(v):key==="dist"||key==="vol"?Math.round(v).toLocaleString("es-CL"):fmtN(Math.round(v*10)/10);
     const why=key==="orm"?'<p class="note">Combina peso y repeticiones en un solo número: 30 kg × 10 (≈40) cuenta como más fuerza que 20 kg × 15 (≈30).</p>':key==="vol"?'<p class="note">El trabajo total: suma de peso × reps de cada serie.</p>':'';
     if(pts.length<2){box.innerHTML=mchips+'<p class="note">'+label+': <b class="num">'+fv(pts[0].v)+' '+unit+'</b> el '+fmtShort(pts[0].d)+'. Anótalo otro día para ver la curva.</p>'+why;return}
-    const W=600,H=220,L=40,R=16,T=16,B=30;
-    let lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v));
-    if(lo===hi){lo=Math.max(0,lo-1);hi=hi+1}
-    const span=hi-lo;lo=Math.max(0,lo-span*.15);hi=hi+span*.15;
-    const x=i=>L+i*(W-L-R)/(pts.length-1);
-    const y=v=>T+(hi-v)*(H-T-B)/(hi-lo);
-    const line=pts.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p.v).toFixed(1)).join(" ");
-    const area=line+" L"+x(pts.length-1).toFixed(1)+" "+(H-B)+" L"+L+" "+(H-B)+" Z";
-    const step=Math.ceil(pts.length/6);
-    let s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="min-width:320px;display:block" role="img" aria-label="'+esc(label+" de "+name)+'">';
-    [lo,(lo+hi)/2,hi].forEach(t=>{s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(t)+'" y2="'+y(t)+'" stroke="var(--line)" stroke-width="1"/><text x="'+(L-6)+'" y="'+(y(t)+4)+'" text-anchor="end">'+fv(t)+'</text>'});
-    s+='<path d="'+area+'" fill="var(--accent)" fill-opacity=".12"/><path d="'+line+'" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>';
-    pts.forEach((p,i)=>{
-      const last=i===pts.length-1;
-      s+='<circle cx="'+x(i)+'" cy="'+y(p.v)+'" r="'+(last?5:3)+'" fill="'+(last?"var(--accent)":"var(--surface)")+'" stroke="var(--accent)" stroke-width="2"/>';
-      // la última fecha siempre; la etiqueta anterior se omite si quedaría pegada a ella
-      if((i%step===0&&!(pts.length-1-i<step*.6&&i!==0))||last)s+='<text x="'+x(i)+'" y="'+(H-10)+'" text-anchor="'+(i===0?"start":last?"end":"middle")+'">'+fmtShort(p.d)+'</text>';
-    });
-    s+='</svg>';
+    const s=progressSVG(pts,{fv,ariaLabel:label+" de "+name});
     const diff=r1(pts[pts.length-1].v-pts[0].v);
     box.innerHTML=mchips+s+'<p class="note">'+label+' ('+unit+'). Desde el '+fmtShort(pts[0].d)+': <b class="num">'+(diff>0?"+":diff<0?"−":"")+fv(Math.abs(diff))+' '+unit+'</b> · <span class="pr">★ '+(key==="vol"?"Máximo ":"Récord ")+fv(key==="best"?Math.min(...pts.map(p=>p.v)):Math.max(...pts.map(p=>p.v)))+' '+unit+'</span></p>'+why;
   }
@@ -1986,20 +1941,6 @@ export function startApp(env){
   $("chart").addEventListener("click",e=>{const b=e.target.closest("[data-metric]");if(!b)return;progMetric=b.dataset.metric;drawChart(picked)});
 
   // ---------- categorías por músculo ----------
-  const CATS=[["piernas","Piernas","#2E9BD6"],["gluteos","Glúteos","#D6457A"],["espalda","Espalda","#15985C"],["pecho","Pecho","#C98A00"],["hombros","Hombros","#8E6BE8"],["brazos","Brazos","#E07A3F"],["core","Core","#0E8C7E"],["cardio","Cardio","#E0485F"],["otro","Otro","#8B93A6"]];
-  const CATMAP=Object.fromEntries(CATS.map(c=>[c[0],c]));
-  function guessCat(n){
-    const t=norm(n),h=(...w)=>w.some(x=>t.includes(x));
-    if(h("ergometro","trote","correr","bici","eliptica","cinta","caminadora","cuerda","burpee","spinning","assault","remoerg"))return "cardio";
-    if(h("femoral","isquio","cuadricep","sentadilla","prensa","zancada","estocada","extension de pierna","extension de cuadri","gemelo","pantorrilla","peso muerto","bulgara","step up","pierna"))return "piernas";
-    if(h("plancha","abdominal","crunch","core","oblicuo","rueda","hollow","dead bug","bear","oso","pallof","russian","elevacion de piernas"))return "core";
-    if(h("gluteo","hip thrust","puente","patada","abduc"))return "gluteos";
-    if(h("militar","hombro","lateral","vuelo","face pull","arnold","deltoid","pajaro"))return "hombros";
-    if(h("banca","pecho","apertura","flexion","pec deck","cruce","press inclinado","press declinado"))return "pecho";
-    if(h("remo","jalon","dominada","pull","lumbar","espalda","pullover","encogimiento"))return "espalda";
-    if(h("curl","bicep","tricep","fondos","martillo","frances","copa"))return "brazos";
-    return null;
-  }
   // cats[clave] = "piernas" (elegido por ti, formato antiguo) o {c:"piernas",by:"user"|"ai"}
   const catEntry=n=>{const v=cats[imgKey(n)];if(!v)return null;if(typeof v==="string")return {c:v,by:"user"};return CATMAP[v.c]?v:null};
   const catOf=n=>{const v=catEntry(n);return v?v.c:(guessCat(n)||"otro")};
@@ -2080,17 +2021,7 @@ export function startApp(env){
     if(pts.length>1){const d=last-pts[0],better=k==="best"?d<0:d>0;arrow=Math.abs(d)<1e-9?'<span class="ta">= sin cambio</span>':'<span class="ta '+(better?"up":"dn")+'">'+(better?"↑ ":"↓ ")+fmtV(Math.abs(d))+' desde el '+esc(fmtShort(days[0]))+'</span>'}
     let svg="";
     if(pts.length>1){
-      // gráfico con ejes: Y = valor (mín, medio, máx), X = fechas
-      const W=320,H=150,L=44,R=12,T=10,B=26;
-      let lo=Math.min(...pts),hi=Math.max(...pts);if(lo===hi){lo-=1;hi+=1}const pad=(hi-lo)*.1;lo-=pad;hi+=pad;
-      const x=i=>L+i*(W-L-R)/(pts.length-1),y=v=>T+(1-(v-lo)/(hi-lo))*(H-T-B);
-      let g="";
-      [lo+pad,(lo+hi)/2,hi-pad].forEach(t=>{g+='<line class="tg" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(t).toFixed(1)+'" y2="'+y(t).toFixed(1)+'"/><text class="tyl" x="'+(L-6)+'" y="'+(y(t)+4).toFixed(1)+'" text-anchor="end">'+esc(fmtV(t).replace(" kg",""))+'</text>'});
-      g+='<line class="tax" x1="'+L+'" x2="'+L+'" y1="'+T+'" y2="'+(H-B)+'"/><line class="tax" x1="'+L+'" x2="'+(W-R)+'" y1="'+(H-B)+'" y2="'+(H-B)+'"/>';
-      const step=Math.max(1,Math.ceil(pts.length/4));
-      days.forEach((d,i)=>{const lastI=i===days.length-1;if(i%step===0||lastI){if(!lastI&&days.length-1-i<step/2&&i!==0)return;g+='<text class="txl" x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(i===0?"start":lastI?"end":"middle")+'">'+esc(fmtShort(d))+'</text>'}});
-      g+='<polyline class="tl" points="'+pts.map((v,i)=>x(i).toFixed(1)+","+y(v).toFixed(1)).join(" ")+'"/>'+pts.map((v,i)=>'<circle class="td" cx="'+x(i).toFixed(1)+'" cy="'+y(v).toFixed(1)+'" r="'+(i===pts.length-1?4:2.5)+'"/>').join("");
-      svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc(who+": "+what)+'">'+g+'</svg>';
+      svg=trendSVG(days,pts,fmtV,who+": "+what);
     }
     return '<div class="trend"><div class="trh"><b>'+esc(who)+'</b><span>'+esc(what)+'</span></div>'+svg+
       '<div class="trf">Último: <b>'+esc(fmtV(last))+'</b> '+arrow+(pts.length<2?'<span> · con 2 o más días verás el gráfico</span>':'')+'</div></div>';
