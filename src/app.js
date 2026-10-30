@@ -1955,7 +1955,7 @@ export function startApp(env){
     let streak=0,w=weekHas(0)?0:1;while(weekHas(w)&&w<200){streak++;w++}
     if(!stkMonth)stkMonth=new Date(now.getFullYear(),now.getMonth(),1);
     const y=stkMonth.getFullYear(),m=stkMonth.getMonth(),first=new Date(y,m,1),nDays=new Date(y,m+1,0).getDate(),lead=(first.getDay()+6)%7;
-    const lv=n=>!n?"":n<6?"l1":n<13?"l2":"l3";
+    const lv=n=>n?"l3":""; // un solo color: entrenaste o no (la cantidad de series casi no cambia)
     let cells=["L","M","M","J","V","S","D"].map(L=>'<span class="cdh">'+L+'</span>').join("");
     // días del mes anterior/siguiente para completar la primera y última semana
     const cell=(dt,other)=>{const ds=iso(dt),n=setsBy[ds]||0;
@@ -1978,7 +1978,7 @@ export function startApp(env){
     card.innerHTML='<div class="stk-top"><div><b>'+streak+'<small>'+(streak===1?"semana":"semanas")+' seguidas</small></b></div><span>'+mDays+(mDays===1?" día":" días")+' en '+esc(first.toLocaleDateString("es-CL",{month:"long"}))+(mSets?' · '+mSets+' series':'')+'</span></div>'+
       '<div class="calhead"><button type="button" class="iconbtn" data-cm="-1" aria-label="Mes anterior">‹</button><b class="caltitle">'+esc(title)+'</b><button type="button" class="iconbtn" data-cm="1" aria-label="Mes siguiente"'+(stkCan(1)?'':' disabled')+'>›</button></div>'+
       '<div class="calclip"><div class="hcal">'+cells+'</div></div>'+
-      '<div class="hlegend">Menos <i></i><i class="l1"></i><i class="l2"></i><i class="l3"></i> Más series'+(planned.size?' · <i class="plan"></i> Planificado':'')+'</div>'+
+      '<div class="hlegend"><i class="l3"></i> Entrenado'+(planned.size?' · <i class="plan"></i> Planificado':'')+'</div>'+
       (wkHtml?'<div class="wkcats"><span>Esta semana:</span>'+wkHtml+'</div>':'');
   }
   // deslizar a los lados sobre un calendario cambia de mes (táctil)
