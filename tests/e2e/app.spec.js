@@ -264,3 +264,24 @@ test("respaldo en Excel (CSV) con todo el historial", async ({ page }) => {
   expect(lines.length).toBeGreaterThan(50);
   expect(text).toContain("Vuelo lateral");
 });
+
+test("admin: editar el banco común con 'Guardar cambios'", async ({ page }) => {
+  const errors = await start(page);
+  // convertir a esta cuenta en administradora (solo en la base simulada)
+  await page.evaluate(() => {
+    const db = JSON.parse(localStorage.mockdb), me = JSON.parse(localStorage.mocksession).user.id;
+    db.profiles.find(p => p.id === me).is_admin = true;
+    localStorage.mockdb = JSON.stringify(db);
+  });
+  await page.reload();
+  await page.click("#t-ejercicios");
+  await page.locator(".bcell", { hasText: "Remo en T" }).click();
+  await expect(page.locator("#bkName")).toBeVisible();
+  await expect(page.locator("#bkSave")).toBeDisabled();
+  await page.fill("#bkName", "Remo en T (barra)");
+  await expect(page.locator("#bkSave")).toBeEnabled();
+  await page.click("#bkSave");
+  await expect(page.locator("#fichaName")).toHaveText("Remo en T (barra)");
+  await expect(page.locator("#bkSave")).toBeDisabled();
+  expect(errors).toEqual([]);
+});
