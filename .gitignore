@@ -3,3 +3,6 @@ dist
 .netlify
 .env
 dist-mock
+dist-test/
+playwright-report/
+test-results/
