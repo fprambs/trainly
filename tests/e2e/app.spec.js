@@ -26,7 +26,11 @@ test("completar una serie: ventana, descanso y 'Anotar ya'", async ({ page }) =>
   await expect(page.locator("#rNext")).toContainText("serie 2");
   await layoutOk(page);
   // el + no queda tapado por la tarjeta del descanso
-  const hit = await page.evaluate(() => { const b = document.getElementById("addOpen").getBoundingClientRect(); const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !!e && !!e.closest("#addOpen"); });
+  const hit = await page.evaluate(() => {
+    const b = document.getElementById("addOpen").getBoundingClientRect();
+    const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    return !!e && !!e.closest("#addOpen");
+  });
   expect(hit).toBe(true);
   await page.click("#rNext [data-go]");
   await expect(page.locator("#setModal")).toBeVisible();
@@ -36,7 +40,8 @@ test("completar una serie: ventana, descanso y 'Anotar ya'", async ({ page }) =>
 
 test("cambiar la duración del descanso no lo reinicia", async ({ page }) => {
   await start(page);
-  await page.click("#teToca .tt-go"); await page.click("#smOk");
+  await page.click("#teToca .tt-go");
+  await page.click("#smOk");
   await page.waitForTimeout(2200);
   await page.click("#rTimeBtn");
   await page.click("[data-preset='180']");
@@ -70,7 +75,9 @@ test("agregar un ejercicio y el formulario se limpia al cerrar", async ({ page }
   await page.click("#addOpen");
   await expect(page.locator("#name")).toHaveValue("");
   await page.fill("#name", "Sentadilla búlgara de prueba");
-  await page.fill("#sets", "3"); await page.fill("#reps", "10"); await page.fill("#weight", "12,5");
+  await page.fill("#sets", "3");
+  await page.fill("#reps", "10");
+  await page.fill("#weight", "12,5");
   await page.click("#submitBtn");
   await expect(page.locator("#addCard")).toBeHidden();
   await expect(page.locator(".tcard", { hasText: "Sentadilla búlgara de prueba" })).toContainText("12,5 kg");
@@ -114,7 +121,11 @@ test("días: anterior, futuro y volver a hoy", async ({ page }) => {
 test("deslizar cambia de día en cualquier parte de Hoy", async ({ page }) => {
   await start(page, { seed: false });
   const { width: W, height: H } = page.viewportSize();
-  for (const [x, y] of [[W / 2, H * 0.3], [W / 2, H * 0.75], [14, H * 0.5]]) {
+  for (const [x, y] of [
+    [W / 2, H * 0.3],
+    [W / 2, H * 0.75],
+    [14, H * 0.5]
+  ]) {
     await swipe(page, x, y, W * 0.4);
     await expect(page.locator("#date")).toHaveValue(addDays(-1));
     await swipe(page, x, y, -W * 0.4);
@@ -135,7 +146,8 @@ test("calendario del historial: deslizar cambia de mes y muestra días vecinos",
   await expect(page.locator(".hcal button.other").first()).toBeVisible();
   // las celdas completan semanas enteras
   expect((await page.locator(".hcal button").count()) % 7).toBe(0);
-  await page.click("[data-cm='1']"); await page.click("[data-cm='1']"); // se puede ir al futuro para planificar
+  await page.click("[data-cm='1']");
+  await page.click("[data-cm='1']"); // se puede ir al futuro para planificar
   await layoutOk(page);
 });
 
@@ -145,7 +157,9 @@ test("resumen: se ve completo y se puede desplazar", async ({ page }) => {
   await expect(page.locator("#sumCard")).toBeVisible();
   const top = await page.locator("#sumCard").evaluate(e => e.getBoundingClientRect().top);
   expect(top).toBeGreaterThanOrEqual(0);
-  await page.locator("#sumOv").evaluate(e => { e.scrollTop = 1e5; });
+  await page.locator("#sumOv").evaluate(e => {
+    e.scrollTop = 1e5;
+  });
   await expect(page.locator("#sumImg")).toBeInViewport();
 });
 
@@ -166,18 +180,29 @@ test("apariencia: modo y paleta se guardan", async ({ page }) => {
   await page.click("#sheet [data-pal=oceano]");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  const accent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim());
+  const accent = await page.evaluate(() =>
+    getComputedStyle(document.documentElement).getPropertyValue("--accent").trim()
+  );
   expect(accent.toLowerCase()).toBe("#18d2c4");
 });
 
 test("cambio de contraseña pide la actual y confirmación", async ({ page }) => {
   await start(page, { seed: false });
   await page.click("#acctBtn");
-  const send = async (o, a, b) => { await page.fill("#pwOld", o); await page.fill("#pwNew", a); await page.fill("#pwNew2", b); await page.click("#pwForm [type=submit]"); };
-  await send("", "abcdef", "abcdef");      await expect(page.locator("#sheetMsg")).toContainText("actual");
-  await send("123456", "abcdef", "abcdeg"); await expect(page.locator("#sheetMsg")).toContainText("no coinciden");
-  await send("malmal", "abcdef", "abcdef"); await expect(page.locator("#sheetMsg")).toContainText("no es correcta");
-  await send("123456", "abcdef", "abcdef"); await expect(page.locator("#sheetMsg")).toContainText("actualizada");
+  const send = async (o, a, b) => {
+    await page.fill("#pwOld", o);
+    await page.fill("#pwNew", a);
+    await page.fill("#pwNew2", b);
+    await page.click("#pwForm [type=submit]");
+  };
+  await send("", "abcdef", "abcdef");
+  await expect(page.locator("#sheetMsg")).toContainText("actual");
+  await send("123456", "abcdef", "abcdeg");
+  await expect(page.locator("#sheetMsg")).toContainText("no coinciden");
+  await send("malmal", "abcdef", "abcdef");
+  await expect(page.locator("#sheetMsg")).toContainText("no es correcta");
+  await send("123456", "abcdef", "abcdef");
+  await expect(page.locator("#sheetMsg")).toContainText("actualizada");
 });
 
 test("ejercicios: filtro por músculo", async ({ page }) => {
@@ -193,7 +218,8 @@ test("ejercicios: filtro por músculo", async ({ page }) => {
 test("modo profesor: se ve a quién se anota", async ({ page }) => {
   await start(page, { seed: false, coach: true });
   await page.click("#acctBtn");
-  await page.fill("#stuName", "Camila"); await page.click("#addStu button[type=submit]");
+  await page.fill("#stuName", "Camila");
+  await page.click("#addStu button[type=submit]");
   await page.click("#sheetX");
   await page.locator("#athBar [data-ath]", { hasText: "Camila" }).click();
   await expect(page.locator("#whoBar")).toContainText("Camila");
@@ -201,7 +227,12 @@ test("modo profesor: se ve a quién se anota", async ({ page }) => {
 
 // captura lo que la app "descarga" (sin abrir el menú de compartir del sistema)
 async function captureDownload(page, click) {
-  await page.evaluate(() => { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); HTMLAnchorElement.prototype.click = function () { window.__dl = { href: this.href, name: this.download }; }; });
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true });
+    HTMLAnchorElement.prototype.click = function () {
+      window.__dl = { href: this.href, name: this.download };
+    };
+  });
   await click();
   await page.waitForFunction(() => !!window.__dl, null, { timeout: 20_000 });
   return page.evaluate(() => window.__dl);
@@ -212,7 +243,12 @@ test("resumen: imagen para historia de Instagram (1080×1920)", async ({ page })
   await page.click("#sumBtn");
   const dl = await captureDownload(page, () => page.click("#sumImg"));
   expect(dl.name).toMatch(/^sesion-.*\.png$/);
-  const size = await page.evaluate(async href => { const im = new Image(); im.src = href; await im.decode(); return [im.naturalWidth, im.naturalHeight]; }, dl.href);
+  const size = await page.evaluate(async href => {
+    const im = new Image();
+    im.src = href;
+    await im.decode();
+    return [im.naturalWidth, im.naturalHeight];
+  }, dl.href);
   expect(size).toEqual([1080, 1920]);
   expect(errors).toEqual([]);
 });

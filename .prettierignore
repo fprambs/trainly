@@ -1,0 +1,8 @@
+dist
+dist-test
+dist-mock
+node_modules
+public/media
+playwright-report
+test-results
+*.md
