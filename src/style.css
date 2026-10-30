@@ -1268,3 +1268,11 @@ body:not([data-tab="anotar"]) .tabs .rest .rnext,body:not([data-tab="anotar"]) .
 /* días de otro mes: claramente distintos (sin fondo, texto tenue, punto si entrenaste) */
 .hcal button.other,.calgrid button.other{background:transparent!important;color:var(--muted)!important;font-weight:500;opacity:.6;box-shadow:none!important;outline:0!important;position:relative}
 .hcal button.other.l1::after,.hcal button.other.l2::after,.hcal button.other.l3::after{content:"";position:absolute;left:50%;bottom:16%;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:var(--accent)}
+
+/* marco del calendario con aire para el contorno de "hoy" y separado de la leyenda */
+.calclip{margin:-4px -6px 4px;padding:4px 6px 6px}
+/* días de otro mes planificados: punto con borde */
+.hcal button.other.plan::after{content:"";position:absolute;left:50%;bottom:16%;width:6px;height:6px;margin-left:-4px;border-radius:50%;border:1.5px solid var(--accent);background:transparent}
+/* días futuros del mes: con caja (se pueden planificar); los de otro mes: sin caja y más tenues */
+.hcal button.fut{background:var(--surface2);color:var(--muted)}
+.hcal button.other{opacity:.45}
