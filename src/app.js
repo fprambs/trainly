@@ -1002,8 +1002,9 @@ export function startApp(env){
     $("rest").hidden=false;document.body.classList.add("resting");$("rPre").hidden=true;$("rTimeBtn").setAttribute("aria-expanded","false");
     $("rLabel").textContent="Descanso · "+e.name;
     renderRestPresets();keepAwake();tick();
+    try{if("Notification" in window&&Notification.permission==="default"&&!localStorage.getItem("trainly-noti-asked")){localStorage.setItem("trainly-noti-asked","1");askNotify()}}catch(e){}
   }
-  function stopRest(){rest=null;$("rest").hidden=true;$("rest").classList.remove("over");document.body.classList.remove("resting")}
+  function stopRest(){if(typeof clearRestNoti==="function")clearRestNoti();rest=null;$("rest").hidden=true;$("rest").classList.remove("over");document.body.classList.remove("resting")}
   function renderRestPresets(){
     if(!rest)return;
     const cur=restCfg.by[rest.key]||null;
@@ -2543,6 +2544,44 @@ export function startApp(env){
   });
 
   applyFields();
-  init();
+
+  // ---------- accesos directos del ícono (mantener presionado el ícono en Android) ----------
+  function runShortcut(a){
+    if(a==="agregar"){showTab("anotar");goDay(today);setAddOpen(true,true)}
+    else if(a==="entrenar"){showTab("anotar");goDay(today);
+      const l=entries.filter(e=>e.date===today).sort(byCreated),gs=l.length?splitSessions(l):[],cur=gs.length?gs[gs.length-1].entries:[];
+      if(findNext(cur))openFocus(true);else{toast("No tienes series pendientes hoy. Agrega un ejercicio o carga una rutina.");setAddOpen(true,true)}}
+    else if(a==="rutinas")showTab("rutinas");
+    else if(a==="historial")showTab("historial");
+  }
+  const shortcutAct=new URLSearchParams(location.search).get("a");
+  if(shortcutAct)try{history.replaceState(history.state,"",location.pathname+location.hash)}catch(e){}
+
+  // ---------- descanso en las notificaciones (con la app en segundo plano o el teléfono bloqueado) ----------
+  let restNotiT=null;
+  const notiOK=()=>"Notification" in window&&Notification.permission==="granted"&&navigator.serviceWorker;
+  async function restNoti(final){
+    try{
+      if(!notiOK()||!rest)return;
+      const reg=await navigator.serviceWorker.getRegistration();if(!reg)return;
+      const nx=$("rNext").querySelector("[data-go]")?$("rNext").textContent.replace(/^Después:\s*/,"").replace(/Anotar ya$/,"").trim():"";
+      if(final)await reg.showNotification("¡A la siguiente serie!",{body:nx||"Terminó tu descanso",tag:"trainly-rest",renotify:true,requireInteraction:true,vibrate:[250,120,250],icon:"/icons/icon-192.png",badge:"/icons/icon-192.png",actions:nx?[{action:"anotar",title:"Anotar ya"}]:[],data:{kind:"rest"}});
+      else{const hh=new Date(rest.end).toLocaleTimeString("es-CL",{hour:"2-digit",minute:"2-digit",hour12:false});
+        await reg.showNotification("Descansando · termina a las "+hh,{body:(nx?"Después: "+nx:rest.name),tag:"trainly-rest",silent:true,icon:"/icons/icon-192.png",badge:"/icons/icon-192.png",data:{kind:"rest"}})}
+    }catch(e){}
+  }
+  async function clearRestNoti(){clearTimeout(restNotiT);restNotiT=null;try{const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg)(await reg.getNotifications({tag:"trainly-rest"})).forEach(n=>n.close())}catch(e){}}
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="hidden"&&rest){
+      const left=rest.end-Date.now();
+      if(left>1500){restNoti(false);clearTimeout(restNotiT);restNotiT=setTimeout(()=>{if(rest)restNoti(true)},left)}
+    }else if(document.visibilityState==="visible")clearRestNoti();
+  });
+  // "Anotar ya" desde la notificación
+  if(navigator.serviceWorker)navigator.serviceWorker.addEventListener("message",ev=>{
+    if(!ev.data||ev.data.type!=="rest-anotar")return;
+    showTab("anotar");const b=$("rNext").querySelector("[data-go]");if(b)b.click();else if(rest)stopRest();
+  });
+  init().then(()=>{if(shortcutAct)setTimeout(()=>runShortcut(shortcutAct),80)});
 
 }
