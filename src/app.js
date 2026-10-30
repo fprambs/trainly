@@ -1377,11 +1377,11 @@ export function startApp(env){
           (wantsMeters(e)?'<div class="fields">'+fField("m","Metros",D.m,50)+'</div>':'');
       }else{
         const showW=e.weight!=null||D.w!=null||e.reps==null,showR=e.reps!=null||D.r!=null||e.weight==null;
-        fields='<div class="fields">'+(showW?fField("w","Kg",D.w,1)+'<div class="fquick" role="group" aria-label="Atajos de peso"><button type="button" data-fs="w" data-d="-2.5">−2,5</button><button type="button" data-fs="w" data-d="2.5">+2,5</button><button type="button" data-fs="w" data-d="5">+5</button></div>':'')+(showR?fField("r","Reps",D.r,1):'')+'</div>';
+        fields='<div class="fields">'+(showW?fField("w",perSide(nx.e.name)?"Kg c/u":"Kg",D.w,1)+'<div class="fquick" role="group" aria-label="Atajos de peso"><button type="button" data-fs="w" data-d="-2.5">−2,5</button><button type="button" data-fs="w" data-d="2.5">+2,5</button><button type="button" data-fs="w" data-d="5">+5</button></div>':'')+(showR?fField("r","Reps",D.r,1):'')+'</div>';
       }
       body='<div class="fset'+(fresh?' arrive':'')+'" style="display:flex;flex-direction:column;gap:14px">'+
         '<div class="fmedia">'+(r?mediaBig(r):'<span class="fletter">'+esc((e.name||"?").charAt(0).toUpperCase())+'</span>')+'</div>'+
-        '<div class="fname"><small>Ronda '+(i+1)+'</small><b>'+esc(e.name)+'</b><span>Serie '+(i+1)+' de '+total+(planText(e)?' · pedido: '+esc(planText(e)):'')+'</span></div>'+
+        '<div class="fname"><small>'+(e.circuit?'Ronda '+(i+1):'Ejercicio '+(withSets.indexOf(e)+1)+' de '+withSets.length)+'</small><b>'+esc(e.name)+'</b><span>Serie '+(i+1)+' de '+total+(planText(e)?' · pedido: '+esc(planText(e)):'')+'</span></div>'+
         (p?'<p class="fprev">Serie anterior: <b>'+esc(setLine(e,p))+'</b></p>':lt?'<p class="fprev">Última vez ('+esc(fmtShort(lt.date))+'): <b>'+esc(lt.line)+'</b></p>':'')+
         fields+
         (timed?'<button type="button" class="fdone'+(run?' stop':'')+'" id="fDone">'+(run?'■ Detener':PLAY+' Iniciar')+'</button>':'<button type="button" class="fdone" id="fDone">✓ Hecha</button>')+
@@ -2122,7 +2122,8 @@ export function startApp(env){
     pts.forEach((p,i)=>{
       const last=i===pts.length-1;
       s+='<circle cx="'+x(i)+'" cy="'+y(p.v)+'" r="'+(last?5:3)+'" fill="'+(last?"var(--accent)":"var(--surface)")+'" stroke="var(--accent)" stroke-width="2"/>';
-      if(i%step===0||last)s+='<text x="'+x(i)+'" y="'+(H-10)+'" text-anchor="'+(i===0?"start":last?"end":"middle")+'">'+fmtShort(p.d)+'</text>';
+      // la última fecha siempre; la etiqueta anterior se omite si quedaría pegada a ella
+      if((i%step===0&&!(pts.length-1-i<step*.6&&i!==0))||last)s+='<text x="'+x(i)+'" y="'+(H-10)+'" text-anchor="'+(i===0?"start":last?"end":"middle")+'">'+fmtShort(p.d)+'</text>';
     });
     s+='</svg>';
     const diff=r1(pts[pts.length-1].v-pts[0].v);
