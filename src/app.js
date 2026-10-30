@@ -1663,7 +1663,7 @@ export function startApp(env){
     }).join("");
     card.innerHTML='<div class="sh"><div class="shtop">'+LOGO_SVG+'<div><b id="sumTitle">Trainly</b><span>'+esc(dayTxt)+(groups.length>1?" · "+esc(sessLabel(g).split(" · ")[0]):"")+'</span></div></div>'+
       '<button type="button" class="shx" data-sum="close" aria-label="Cerrar">✕</button>'+
-      '<div class="durrow"><div class="dur"><b id="sumDur">'+(durMs!=null?fmtClock(durMs):"—")+'</b><small>'+(live?'<span class="live"><i></i>En curso</span> · desde '+startTxt:durMs!=null?"Duración · desde "+startTxt:"Sin series marcadas")+'</small></div>'+ringSVG(done,total,84,8,'<span style="font-size:1.25rem">'+done+'<small>/'+total+'</small></span>')+'</div></div>'+
+      '<div class="durrow"><div class="dur"><b id="sumDur">'+(durMs!=null?fmtClock(durMs):"—")+'</b><small>'+(live?'<span class="live"><i></i>En curso</span> · desde '+startTxt:durMs!=null?"Duración · desde "+startTxt:"Sin series marcadas")+'</small></div>'+ringSVG(done,total,84,8,total&&done>=total?'<span style="font-size:2rem;line-height:1">✓</span>':'<span style="font-size:1.25rem">'+(total?Math.round(done/total*100):0)+'<small>%</small></span>')+'</div></div>'+
       (groups.length>1?'<div class="stabs">'+groups.map((x,k)=>'<button type="button" data-sg="'+k+'" aria-pressed="'+(k===gi)+'">'+esc(sessLabel(x).split(" · ")[0])+'</button>').join("")+'</div>':'')+
       '<div class="sgrid"><div><b>'+g.entries.length+'</b><small>'+(g.entries.length===1?"ejercicio":"ejercicios")+'</small></div><div><b>'+done+'<span style="font-size:.9rem;color:var(--muted)">/'+total+'</span></b><small>series</small></div><div><b>'+Math.round(vol).toLocaleString("es-CL")+'</b><small>kg volumen</small></div><div class="gold"><b>'+prs+'</b><small>★ récords</small></div></div>'+
       '<div class="slist">'+rows+'</div>'+
@@ -1683,7 +1683,8 @@ export function startApp(env){
     out.rows=g.entries.map(e=>{
       const ds=doneArr(e),h=ds.filter(Boolean),r=imgOf(e.name);
       const best=h.some(x=>x.w!=null&&x.r!=null)?valOf(e,"orm"):null;
-      return {name:e.name,pr:recIds.has(e.id),img:r?srcOf(r):null,vid:!!(r&&isVid(r)),
+      const post=r&&isVid(r)?(r.poster||posterURL(srcOf(r))):null;
+      return {name:e.name,pr:recIds.has(e.id),img:r?srcOf(r):null,vid:!!(r&&isVid(r)),poster:post,
         detail:h.length?h.map(x=>setLine(e,x)).join(" · "):(planText(e)?"Plan: "+(e.sets?e.sets+"× ":"")+planText(e):"Sin series"),
         side:ds.length?h.length+"/"+ds.length+(h.length===ds.length?" ✓":""):"",complete:ds.length&&h.length===ds.length,orm:best?"1RM "+fmtN(r1(best))+" kg":""};
     });
@@ -1716,11 +1717,11 @@ export function startApp(env){
     words.forEach(w=>{const t=cur?cur+" "+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w}else cur=t});
     if(cur)lines.push(cur);return lines;
   }
-  const loadImg=src=>new Promise(res=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>res(null);im.src=src});
+  const loadImg=src=>new Promise(res=>{const im=new Image();if(/^https?:/.test(src)&&!src.startsWith(location.origin))im.crossOrigin="anonymous";im.onload=()=>res(im);im.onerror=()=>res(null);im.src=src});
   // primer cuadro de un video, para dibujarlo como miniatura
   const loadFrame=src=>new Promise(res=>{
     const v=document.createElement("video");let done=false;const fin=x=>{if(!done){done=true;res(x)}};
-    v.muted=true;v.playsInline=true;v.preload="auto";v.setAttribute("playsinline","");
+    v.muted=true;v.playsInline=true;v.preload="auto";v.setAttribute("playsinline","");v.crossOrigin="anonymous";
     v.onloadeddata=()=>{try{v.currentTime=Math.min(.2,(v.duration||1)/2)}catch(e){fin(v)}};
     v.onseeked=()=>fin(v.videoWidth?v:null);v.onerror=()=>fin(null);
     setTimeout(()=>fin(v.videoWidth?v:null),4000);
@@ -1733,22 +1734,30 @@ export function startApp(env){
     try{await Promise.all(['800 160px "Barlow Condensed"','700 48px "Barlow Condensed"','600 38px "Barlow"','400 32px "Barlow"'].map(f=>document.fonts.load(f)))}catch(e){}
     const W=1080,P=64,meas=document.createElement("canvas").getContext("2d");
     meas.font="400 32px "+BODY;
-    const rows=D.rows.map(r=>{const lines=wrapText(meas,r.detail,W-P*2-120-200).slice(0,3);return Object.assign({lines,h:Math.max(124,64+lines.length*40)},r)});
+    const NMW=W-P*2-120-200;
+    const rows=D.rows.map(r=>{
+      const lines=wrapText(meas,r.detail,NMW).slice(0,3);
+      meas.font="600 38px "+BODY;const names=wrapText(meas,r.name,NMW).slice(0,2);meas.font="400 32px "+BODY;
+      meas.font="600 38px "+BODY;const inl=r.pr&&meas.measureText(names[names.length-1]).width+170<=NMW;meas.font="400 32px "+BODY;
+      const badgeRow=r.pr&&!inl;
+      return Object.assign({lines,names,inl,badgeRow,h:Math.max(124,40+names.length*46+(badgeRow?50:0)+lines.length*40)},r)});
     const HEAD=400,STATS=D.rows.length?190:0,LIST=rows.reduce((a,r)=>a+r.h,0)+(rows.length?24:120),FOOT=96;
     const H=HEAD+STATS+LIST+FOOT;
     const cv=document.createElement("canvas");cv.width=W;cv.height=H;const ctx=cv.getContext("2d");
     ctx.fillStyle=C.bg;ctx.fillRect(0,0,W,H);
     // cabecera
     ctx.fillStyle=C.accent;ctx.fillRect(0,0,W,HEAD);
-    ctx.fillStyle=C.ai;ctx.globalAlpha=.18;rr(ctx,P,56,84,84,20);ctx.fill();ctx.globalAlpha=1;
-    ctx.fillStyle=C.ai;[[P+14,82,10,32],[P+60,82,10,32],[P+7,89,7,18],[P+70,89,7,18],[P+24,95,36,6]].forEach(a=>{rr(ctx,a[0],a[1],a[2],a[3],3);ctx.fill()});
-    ctx.font="800 40px "+DISP;ctx.textBaseline="alphabetic";ctx.fillText("BITÁCORA DE ENTRENO",P+112,92);
+    const logo=await loadImg("/icons/icon-192.png");
+    if(logo){ctx.save();rr(ctx,P,56,84,84,20);ctx.clip();ctx.drawImage(logo,P,56,84,84);ctx.restore()}
+    ctx.fillStyle=C.ai;ctx.font="800 44px "+DISP;ctx.textBaseline="alphabetic";ctx.fillText("TRAINLY",P+112,92);
     ctx.font="500 32px "+BODY;ctx.globalAlpha=.88;const dayCap=D.day.charAt(0).toUpperCase()+D.day.slice(1);ctx.fillText(dayCap+(D.sess?" · "+D.sess:""),P+112,134);ctx.globalAlpha=1;
     ctx.font="800 176px "+DISP;ctx.fillText(D.rows.length?D.dur:"—",P-4,318);
     if(D.rows.length&&D.total){const cx=W-P-80,cy=258,rad=72;ctx.lineWidth=14;ctx.lineCap="round";
       ctx.strokeStyle=C.ai;ctx.globalAlpha=.25;ctx.beginPath();ctx.arc(cx,cy,rad,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;
       ctx.beginPath();ctx.arc(cx,cy,rad,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.min(1,D.done/D.total));ctx.stroke();
-      ctx.textAlign="center";ctx.fillStyle=C.ai;ctx.font="800 56px "+DISP;ctx.fillText(D.done+"/"+D.total,cx,cy+20);ctx.textAlign="left"}
+      ctx.textAlign="center";ctx.fillStyle=C.ai;
+      if(D.done>=D.total){ctx.font="800 84px "+DISP;ctx.fillText("✓",cx,cy+30)}else{ctx.font="800 56px "+DISP;ctx.fillText(Math.round(D.done/D.total*100)+"%",cx,cy+20)}
+      ctx.textAlign="left"}
     ctx.font="700 30px "+BODY;ctx.globalAlpha=.9;ctx.fillText((D.durLabel||"Sin ejercicios").toUpperCase(),P,366);ctx.globalAlpha=1;
     let y=HEAD;
     if(D.rows.length){
@@ -1760,7 +1769,7 @@ export function startApp(env){
     }
     y+=12;
     if(!rows.length){ctx.fillStyle=C.muted;ctx.font="400 34px "+BODY;ctx.textAlign="center";ctx.fillText("Todavía no hay ejercicios en esta sesión.",W/2,y+70);ctx.textAlign="left";y+=108}
-    const raw=withImages?await Promise.all(rows.map(r=>r.img?(r.vid?loadFrame(r.img):loadImg(r.img)):null)):rows.map(()=>null);
+    const raw=withImages?await Promise.all(rows.map(async r=>{if(!r.img)return null;if(r.vid){const p=r.poster?await loadImg(r.poster):null;return p||loadFrame(r.img)}return loadImg(r.img)})):rows.map(()=>null);
     // cada miniatura pasa por su propio lienzo; si una no se puede usar, se omite solo esa
     const imgs=raw.map(im=>{
       if(!im)return null;
@@ -1772,16 +1781,20 @@ export function startApp(env){
       }catch(e){return null}
     });
     rows.forEach((r,i)=>{
-      const ty=y+20;
-      ctx.fillStyle=C.bg2;rr(ctx,P,ty,96,96,18);ctx.fill();
-      if(imgs[i]){ctx.save();rr(ctx,P,ty,96,96,18);ctx.clip();ctx.fillStyle=C.media;ctx.fillRect(P,ty,96,96);ctx.drawImage(imgs[i],P,ty,96,96);ctx.restore()}
-      else{ctx.fillStyle=C.muted;ctx.font="700 48px "+DISP;ctx.textAlign="center";ctx.fillText((r.name||"?").charAt(0).toUpperCase(),P+48,ty+66);ctx.textAlign="left"}
-      const tx=P+120,maxW=W-P*2-120-200;
+      const ty=y+20,ti=y+Math.max(14,(r.h-96)/2);
+      ctx.fillStyle=C.bg2;rr(ctx,P,ti,96,96,18);ctx.fill();
+      if(imgs[i]){ctx.save();rr(ctx,P,ti,96,96,18);ctx.clip();ctx.fillStyle=C.media;ctx.fillRect(P,ti,96,96);ctx.drawImage(imgs[i],P,ti,96,96);ctx.restore()}
+      else{ctx.fillStyle=C.muted;ctx.font="700 48px "+DISP;ctx.textAlign="center";ctx.fillText((r.name||"?").charAt(0).toUpperCase(),P+48,ti+66);ctx.textAlign="left"}
+      const tx=P+120;
       ctx.fillStyle=C.ink;ctx.font="600 38px "+BODY;
-      let nm=r.name;while(ctx.measureText(nm).width>maxW-(r.pr?150:0)&&nm.length>3)nm=nm.slice(0,-2);if(nm!==r.name)nm=nm.trim()+"…";
-      ctx.fillText(nm,tx,ty+40);
-      if(r.pr){const nw=ctx.measureText(nm).width;ctx.font="700 22px "+BODY;const bw=ctx.measureText("★ RÉCORD").width+28;ctx.fillStyle=C.goldsoft;rr(ctx,tx+nw+14,ty+8,bw,40,8);ctx.fill();ctx.fillStyle=C.gold;ctx.fillText("★ RÉCORD",tx+nw+28,ty+36)}
-      ctx.fillStyle=C.muted;ctx.font="400 32px "+BODY;r.lines.forEach((l,k)=>ctx.fillText(l,tx,ty+84+k*40));
+      let yy=ty+40;
+      r.names.forEach((nm,k)=>{ctx.fillStyle=C.ink;ctx.font="600 38px "+BODY;ctx.fillText(nm,tx,yy);
+        if(k===r.names.length-1&&r.pr){
+          const bx=r.inl?tx+ctx.measureText(nm).width+14:tx,by=r.inl?yy-32:yy+14;
+          ctx.font="700 22px "+BODY;const bw=ctx.measureText("★ RÉCORD").width+28;ctx.fillStyle=C.goldsoft;rr(ctx,bx,by,bw,40,8);ctx.fill();ctx.fillStyle=C.gold;ctx.fillText("★ RÉCORD",bx+14,by+28);
+          if(!r.inl)yy+=50}
+        if(k<r.names.length-1)yy+=46});
+      ctx.fillStyle=C.muted;ctx.font="400 32px "+BODY;r.lines.forEach((l,k)=>ctx.fillText(l,tx,yy+44+k*40));
       ctx.textAlign="right";
       if(r.side){ctx.fillStyle=r.complete?C.ok:C.muted;ctx.font="700 44px "+DISP;ctx.fillText(r.side,W-P,ty+44)}
       if(r.orm){ctx.fillStyle=C.muted;ctx.font="500 26px "+BODY;ctx.fillText(r.orm,W-P,ty+84)}
@@ -1805,7 +1818,7 @@ export function startApp(env){
       }
       // sin descargas: mostrar la imagen para guardarla con presión larga
       const url=URL.createObjectURL(blob);$("sumPrevImg").src=url;$("sumPrev").hidden=false;$("sumPrev").scrollIntoView({block:"nearest",behavior:"smooth"});
-    }catch(e){toast("No se pudo generar la imagen. Inténtalo de nuevo.")}
+    }catch(e){console.error("resumen png",e);toast("No se pudo generar la imagen. Inténtalo de nuevo.")}
     finally{b.disabled=false;b.textContent="Descargar imagen"}
   });
   function openSummary(open){
