@@ -198,3 +198,33 @@ test("modo profesor: se ve a quién se anota", async ({ page }) => {
   await page.locator("#athBar [data-ath]", { hasText: "Camila" }).click();
   await expect(page.locator("#whoBar")).toContainText("Camila");
 });
+
+// captura lo que la app "descarga" (sin abrir el menú de compartir del sistema)
+async function captureDownload(page, click) {
+  await page.evaluate(() => { Object.defineProperty(navigator, "canShare", { value: undefined, configurable: true }); HTMLAnchorElement.prototype.click = function () { window.__dl = { href: this.href, name: this.download }; }; });
+  await click();
+  await page.waitForFunction(() => !!window.__dl, null, { timeout: 20_000 });
+  return page.evaluate(() => window.__dl);
+}
+
+test("resumen: imagen para historia de Instagram (1080×1920)", async ({ page }) => {
+  const errors = await start(page);
+  await page.click("#sumBtn");
+  const dl = await captureDownload(page, () => page.click("#sumImg"));
+  expect(dl.name).toMatch(/^sesion-.*\.png$/);
+  const size = await page.evaluate(async href => { const im = new Image(); im.src = href; await im.decode(); return [im.naturalWidth, im.naturalHeight]; }, dl.href);
+  expect(size).toEqual([1080, 1920]);
+  expect(errors).toEqual([]);
+});
+
+test("respaldo en Excel (CSV) con todo el historial", async ({ page }) => {
+  await start(page);
+  await page.click("#acctBtn");
+  const dl = await captureDownload(page, () => page.click("#backupBtn"));
+  expect(dl.name).toMatch(/^trainly-.*\.csv$/);
+  const text = await page.evaluate(async href => (await fetch(href)).text(), dl.href);
+  const lines = text.trim().split(/\r\n/);
+  expect(lines[0]).toContain("Fecha;Sesión;Ejercicio");
+  expect(lines.length).toBeGreaterThan(50);
+  expect(text).toContain("Vuelo lateral");
+});
