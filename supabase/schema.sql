@@ -410,15 +410,16 @@ create or replace function public.ai_take_cost(cost int) returns text
 language plpgsql security definer set search_path = public as $$
 declare cur int; g int; c int := greatest(1, least(cost, 10));
   per_user constant int := 40; total constant int := 800;
+  d date := (now() at time zone 'America/Santiago')::date; -- el día se cuenta en hora de Chile
 begin
   if auth.uid() is null then return 'auth'; end if;
-  select n into cur from ai_usage where user_id = auth.uid() and day = current_date;
+  select n into cur from ai_usage where user_id = auth.uid() and day = d;
   if coalesce(cur,0) + c > per_user then return 'user'; end if;
-  select n into g from ai_usage_global where day = current_date;
+  select n into g from ai_usage_global where day = d;
   if coalesce(g,0) + c > total then return 'global'; end if;
-  insert into ai_usage(user_id, day, n) values (auth.uid(), current_date, c)
+  insert into ai_usage(user_id, day, n) values (auth.uid(), d, c)
   on conflict (user_id, day) do update set n = ai_usage.n + c;
-  insert into ai_usage_global(day, n) values (current_date, c)
+  insert into ai_usage_global(day, n) values (d, c)
   on conflict (day) do update set n = ai_usage_global.n + c;
   return 'ok';
 end $$;
