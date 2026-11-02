@@ -7404,3 +7404,9 @@ body[data-tab="anotar"] .tcard.dragging {
 body.drag-join .tcard.dragging {
   opacity: 0.55;
 }
+.blkbox.drop-before {
+  box-shadow: 0 -4px 0 var(--accent);
+}
+.blkbox.drop-after {
+  box-shadow: 0 4px 0 var(--accent);
+}

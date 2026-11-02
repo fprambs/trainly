@@ -140,10 +140,22 @@ export function install(app) {
       tgt = it;
       after = true;
     }
+    // dentro de la sub-tarjeta de un circuito (bajo su título) se ordena dentro del circuito; fuera de ella, queda suelto
+    const bx = tgt && tgt.closest(".blkbox");
+    let inBlk = false;
+    if (bx) {
+      const r = bx.getBoundingClientRect(),
+        h = bx.querySelector(".blkhead").getBoundingClientRect();
+      inBlk = ev.clientY >= h.bottom && ev.clientY <= r.bottom;
+    }
     app.drag.target = tgt;
     app.drag.after = join || after;
     app.drag.join = join;
-    if (tgt) tgt.classList.add(join ? "drop-join" : after ? "drop-after" : "drop-before");
+    app.drag.inBlk = inBlk;
+    if (tgt) {
+      const mark = bx && !inBlk && !join ? bx : tgt;
+      mark.classList.add(join ? "drop-join" : after ? "drop-after" : "drop-before");
+    }
     document.body.classList.toggle("drag-join", join);
   });
   async function endDrag() {
@@ -206,7 +218,11 @@ export function install(app) {
     const mine = arr.splice(i, 1)[0];
     const t = arr.findIndex(x => x.e.id === d.target.dataset.id);
     if (t < 0) return null;
-    if (d.join) {
+    if (d.inBlk && !d.after) {
+      // primero (o entre dos) dentro del circuito: queda unido al de abajo
+      mine.link = true;
+      arr.splice(t, 0, mine);
+    } else if (d.join || d.inBlk) {
       mine.link = arr[t].link;
       arr[t].link = true;
       arr.splice(t + 1, 0, mine);

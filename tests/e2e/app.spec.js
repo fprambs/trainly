@@ -133,7 +133,7 @@ async function dragCard(page, from, to, where = "center") {
   await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
   await page.mouse.down();
   await page.waitForTimeout(650);
-  const y = where === "top" ? b.y + 4 : b.y + b.height / 2;
+  const y = where === "top" ? b.y + 6 : where === "above" ? b.y - 14 : b.y + b.height / 2;
   await page.mouse.move(b.x + b.width / 2, y, { steps: 12 });
   await page.mouse.up();
 }
@@ -166,6 +166,15 @@ test("circuito por bloques: unir arrastrando y hacerlos por rondas", async ({ pa
   await expect(page.locator("#rNext")).toContainText(first);
   await expect(page.locator("#rNext")).toContainText("serie 2");
   await page.click("[data-r=skip]");
+  // poner el último del circuito en primer lugar (borde de arriba del primero, dentro del circuito)
+  await dragCard(page, card(third), page.locator(".blkbox .tcard").first(), "top");
+  await expect(page.locator(".blkbox .tcard")).toHaveCount(3);
+  await expect(page.locator(".blkbox .tcard").first()).toContainText(third);
+  // soltarlo sobre el título del circuito lo deja fuera, justo antes
+  await dragCard(page, card(third), page.locator(".blkbox .tcard").first(), "above");
+  await expect(page.locator(".blkbox .tcard")).toHaveCount(2);
+  await dragCard(page, card(third), page.locator(".blkbox .tcard").first(), "top");
+  await expect(page.locator(".blkbox .tcard")).toHaveCount(3);
   // sacar uno arrastrándolo fuera (antes del primer ejercicio de la lista)
   await dragCard(page, card(third), page.locator(".tcard").first(), "top");
   await expect(page.locator(".blkbox .tcard")).toHaveCount(2);
