@@ -1,6 +1,6 @@
 // Descanso entre series.
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { doneArr } from "../lib/sessions.js";
+import { doneArr, blocksOf } from "../lib/sessions.js";
 import { imgKey, fmtDur, fmtSecs } from "../lib/format.js";
 
 export function install(app) {
@@ -237,8 +237,8 @@ export function install(app) {
     }
   });
 
-  // Siguiente serie: por defecto se termina el ejercicio en curso antes de pasar al siguiente.
-  // Los ejercicios cargados de una rutina en "circuito" se hacen por rondas (serie 1 de todos, luego serie 2…).
+  // Siguiente serie: se termina el ejercicio en curso antes de pasar al siguiente, salvo en los bloques
+  // (ejercicios unidos en circuito), que se hacen por rondas: serie 1 de cada uno, luego serie 2… y después el bloque siguiente.
   function findNext(list) {
     const withSets = list.filter(e => e.sets > 0);
     if (app.running) {
@@ -246,11 +246,12 @@ export function install(app) {
       if (re && !doneArr(re)[app.running.i]) return { e: re, r: app.running.i };
     }
     const pend = e => doneArr(e).findIndex(d => !d);
-    const circ = withSets.filter(e => e.circuit);
-    const circNext = () => {
-      const maxS = Math.max(0, ...circ.map(e => doneArr(e).length));
+    const blocks = blocksOf(withSets);
+    const nextIn = b => {
+      if (b.length === 1) return pend(b[0]) >= 0 ? { e: b[0], r: pend(b[0]) } : null;
+      const maxS = Math.max(0, ...b.map(e => doneArr(e).length));
       for (let r = 0; r < maxS; r++)
-        for (const e of circ) {
+        for (const e of b) {
           const ds = doneArr(e);
           if (r < ds.length && !ds[r]) return { e, r };
         }
@@ -272,18 +273,12 @@ export function install(app) {
       if (x) anchor = x;
     }
     if (anchor) {
-      if (anchor.circuit) {
-        const nx = circNext();
-        if (nx) return nx;
-      } else if (pend(anchor) >= 0) return { e: anchor, r: pend(anchor) };
+      const nx = nextIn(blocks.find(b => b.includes(anchor)));
+      if (nx) return nx;
     }
-    for (const e of withSets) {
-      if (pend(e) < 0) continue;
-      if (e.circuit) {
-        const nx = circNext();
-        if (nx) return nx;
-      }
-      return { e, r: pend(e) };
+    for (const b of blocks) {
+      const nx = nextIn(b);
+      if (nx) return nx;
     }
     return null;
   }

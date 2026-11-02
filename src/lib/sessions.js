@@ -48,3 +48,20 @@ export function sessLabel(g) {
 }
 export const sessDur = g =>
   g.start == null || g.end == null ? null : Math.max(1, Math.round((g.end - g.start) / 60000));
+
+// Bloques (circuitos): un ejercicio unido al siguiente (`link`) se hace por rondas con él —serie 1 de cada uno,
+// luego serie 2…— y los bloques van en orden. `circuit` es el formato antiguo: todo el día en un solo circuito.
+export const linkedTo = (a, b) => !!(a && b && (a.link || (a.circuit && b.circuit)));
+export function blocksOf(list) {
+  const out = [];
+  list.forEach((e, i) => {
+    if (i && linkedTo(list[i - 1], e)) out[out.length - 1].push(e);
+    else out.push([e]);
+  });
+  return out;
+}
+// items de una rutina con las uniones explícitas (convierte las rutinas antiguas "en circuito")
+export const routineItems = r =>
+  (r.items || []).map((it, i, a) =>
+    r.circuit && !("link" in it) ? Object.assign({}, it, { link: i < a.length - 1 }) : it
+  );

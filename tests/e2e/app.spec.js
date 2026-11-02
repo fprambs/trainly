@@ -124,6 +124,42 @@ test("foto o video cuadrado se ve completo en modo entrenamiento y en la ficha",
   expect(await inside(".fimedia")).toBe(true);
 });
 
+test("circuito por bloques: unir ejercicios y hacerlos por rondas", async ({ page }) => {
+  const errors = await start(page);
+  // Te toca parte en el primer ejercicio pendiente: se une con el siguiente
+  const first = (await page.locator("#teToca .tt-info b").textContent()).trim();
+  const cards = page.locator(".tcard");
+  const names = await cards.locator(".tinfo b").allTextContents();
+  const i = names.findIndex(n => n.trim().startsWith(first));
+  const second = names[i + 1].trim();
+  await page.locator(".tcard").nth(i).locator("xpath=following-sibling::button[contains(@class,'tlink')][1]").click();
+  await expect(page.locator(".blkhead")).toHaveCount(1);
+  await expect(page.locator(".blkhead")).toContainText("Circuito A");
+  await expect(page.locator(".tcard.blk")).toHaveCount(2);
+  await layoutOk(page);
+  // serie 1 del primero → luego serie 1 del segundo (no la serie 2 del mismo)
+  await page.click("#teToca .tt-go");
+  await page.click("#smOk");
+  await expect(page.locator("#rNext")).toContainText(second);
+  await expect(page.locator("#rNext")).toContainText("serie 1");
+  // separar vuelve al orden por ejercicio
+  await page.locator(".tlink.on").first().click();
+  await expect(page.locator(".blkhead")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("rutina: unir ejercicios en el editor y cargarla con el circuito", async ({ page }) => {
+  await start(page);
+  await page.click("#t-rutinas");
+  await page.locator(".rutday summary").first().click();
+  await page.locator("[data-redit]").first().click();
+  await page.locator("[data-rlink='0']").click();
+  await expect(page.locator("[data-rlink='0']")).toHaveAttribute("aria-pressed", "true");
+  await page.locator("[data-redit]").first().click();
+  await expect(page.locator(".rutlink")).toHaveCount(1);
+  await layoutOk(page);
+});
+
 test("sin nombre muestra un mensaje propio", async ({ page }) => {
   await start(page);
   await page.click("#addOpen");

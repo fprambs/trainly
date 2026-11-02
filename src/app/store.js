@@ -35,7 +35,8 @@ export function install(app) {
     order: r.ord,
     createdAt: r.created_ms == null ? null : +r.created_ms,
     done: Array.isArray(r.done) ? r.done : [],
-    circuit: !!r.circuit
+    circuit: !!r.circuit,
+    link: !!r.link
   });
   const ENTRY_COLS = { order: "ord", createdAt: "created_ms" };
   const toRowPatch = p => {
@@ -92,7 +93,8 @@ export function install(app) {
     ord: e.order ?? null,
     created_ms: e.createdAt ?? null,
     done: e.done || [],
-    circuit: !!e.circuit
+    circuit: !!e.circuit,
+    link: !!e.link
   });
   function renderSync() {
     const n = outbox.length,

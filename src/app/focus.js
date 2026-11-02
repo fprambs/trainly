@@ -1,6 +1,15 @@
 // Modo entrenamiento (pantalla completa).
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { ordOf, doneArr, byCreated, sessionStart, splitSessions, sessLabel, sessDur } from "../lib/sessions.js";
+import {
+  ordOf,
+  doneArr,
+  byCreated,
+  sessionStart,
+  splitSessions,
+  sessLabel,
+  sessDur,
+  blocksOf
+} from "../lib/sessions.js";
 import { parse, fmtShort, esc, norm, fmtTime, fmtDist, fmtSecs, fmtSess, fmtClock } from "../lib/format.js";
 
 export function install(app) {
@@ -171,6 +180,9 @@ export function install(app) {
           (showR ? fField("r", "Reps", D.r, 1) : "") +
           "</div>";
       }
+      const blocks = blocksOf(withSets),
+        blk = blocks.find(b => b.includes(e)) || [e],
+        blkName = String.fromCharCode(65 + blocks.filter(b => b.length > 1).indexOf(blk));
       body =
         '<div class="fset' +
         (fresh ? " arrive" : "") +
@@ -179,7 +191,9 @@ export function install(app) {
         (r ? app.mediaBig(r) : '<span class="fletter">' + esc((e.name || "?").charAt(0).toUpperCase()) + "</span>") +
         "</div>" +
         '<div class="fname"><small>' +
-        (e.circuit ? "Ronda " + (i + 1) : "Ejercicio " + (withSets.indexOf(e) + 1) + " de " + withSets.length) +
+        (blk.length > 1
+          ? "Circuito " + blkName + " · ronda " + (i + 1)
+          : "Ejercicio " + (withSets.indexOf(e) + 1) + " de " + withSets.length) +
         "</small><b>" +
         esc(e.name) +
         "</b><span>Serie " +

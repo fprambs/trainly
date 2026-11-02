@@ -1,6 +1,6 @@
 // Rutinas: guardar, cargar y editar.
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { byCreated, splitSessions, sessLabel } from "../lib/sessions.js";
+import { byCreated, splitSessions, sessLabel, linkedTo, routineItems } from "../lib/sessions.js";
 import { CATMAP } from "../lib/categories.js";
 import { iso, parse, fmtDay, esc, norm } from "../lib/format.js";
 
@@ -69,13 +69,17 @@ export function install(app) {
     }
     box.innerHTML = app.routines
       .map((r, ri) => {
-        const ed = rutEdit === r.id;
-        const rows = r.items
+        const ed = rutEdit === r.id,
+          its = routineItems(r);
+        const rows = its
           .map((it, ii) => {
             const im = app.imgOf(it.name),
               cat = CATMAP[app.catOf(it.name)];
+            const inBlk = it.link || (ii > 0 && its[ii - 1].link);
             return (
-              '<div class="rutex">' +
+              '<div class="rutex' +
+              (inBlk ? " blk" : "") +
+              '">' +
               (im
                 ? app.mediaHTML(im, "mini")
                 : '<span class="rletter" style="border-color:' +
@@ -100,7 +104,14 @@ export function install(app) {
                   esc(it.name) +
                   ' de la rutina">✕</button>'
                 : "") +
-              "</div>"
+              "</div>" +
+              (ii < its.length - 1
+                ? ed
+                  ? app.linkBtn('data-rlink="' + ii + '" data-rid="' + esc(r.id) + '"', !!it.link)
+                  : it.link
+                    ? '<span class="tlink on rutlink">' + app.CHAIN + "<span>En circuito</span></span>"
+                    : ""
+                : "")
             );
           })
           .join("");
@@ -147,19 +158,11 @@ export function install(app) {
           '">' +
           (ed ? "Listo" : app.PENCIL) +
           "</button></div>" +
-          (ed
-            ? '<div class="rutmode" role="radiogroup" aria-label="Orden de las series"><span>Orden de las series</span><div><button type="button" role="radio" data-rcirc="0" data-rid="' +
-              esc(r.id) +
-              '" aria-checked="' +
-              !r.circuit +
-              '"><b>Por ejercicio</b><small>Todas las series de uno y luego el siguiente</small></button><button type="button" role="radio" data-rcirc="1" data-rid="' +
-              esc(r.id) +
-              '" aria-checked="' +
-              !!r.circuit +
-              '"><b>Circuito</b><small>Serie 1 de todos, luego serie 2…</small></button></div></div>'
-            : r.circuit
-              ? '<p class="rutcirc">↻ En circuito: serie 1 de todos, luego serie 2…</p>'
-              : "") +
+          (ed && its.length > 1
+            ? '<p class="rutcirc">' +
+              app.CHAIN +
+              "Toca «Unir» entre dos ejercicios para hacerlos en circuito: serie 1 de cada uno, luego serie 2…</p>"
+            : "") +
           '<div class="rutexs">' +
           rows +
           "</div>" +
@@ -205,11 +208,13 @@ export function install(app) {
       renderRoutinesTab();
       return;
     }
-    if (b.dataset.rcirc != null) {
+    if (b.dataset.rlink != null) {
       const i = find(b.dataset.rid);
       if (i < 0) return;
-      const l = app.routines.slice();
-      l[i] = Object.assign({}, l[i], { circuit: b.dataset.rcirc === "1" });
+      const l = app.routines.slice(),
+        k = +b.dataset.rlink,
+        items = routineItems(l[i]).map((it, j) => (j === k ? Object.assign({}, it, { link: !it.link }) : it));
+      l[i] = Object.assign({}, l[i], { items, circuit: false });
       await app.store.setRoutines(l);
       return;
     }
@@ -218,7 +223,9 @@ export function install(app) {
       if (i < 0) return;
       const l = app.routines.slice(),
         r = Object.assign({}, l[i]);
-      r.items = r.items.filter((_, k) => k !== +b.dataset.rxdel);
+      r.items = routineItems(r).filter((_, k) => k !== +b.dataset.rxdel);
+      r.circuit = false;
+      if (r.items.length) r.items[r.items.length - 1] = Object.assign({}, r.items[r.items.length - 1], { link: false });
       l[i] = r;
       await app.store.setRoutines(l);
       return;
@@ -251,7 +258,7 @@ export function install(app) {
   });
   async function loadRutOn(r, d) {
     rutPick = null;
-    await addPlans(r.items, "“" + r.name + "”" + (d === app.today ? "" : " para el " + fmtDay(d)), d, r.circuit);
+    await addPlans(routineItems(r), "“" + r.name + "”" + (d === app.today ? "" : " para el " + fmtDay(d)), d);
     app.showTab("anotar");
     app.goDay(d);
   }
@@ -400,13 +407,15 @@ export function install(app) {
     renderLoadBox();
     box.hidden = false;
   });
-  async function addPlans(items, label, date, circuit) {
+  async function addPlans(items, label, date) {
     const d = date || $("date").value || app.today;
     let n = 0;
     const base = Date.now();
     try {
       for (const it of items) {
-        await app.store.add(Object.assign(planOf(it), { date: d, memo: "", createdAt: base + n, circuit: !!circuit }));
+        // la última de la rutina no se une con lo que ya hubiera en el día
+        const link = !!it.link && n < items.length - 1;
+        await app.store.add(Object.assign(planOf(it), { date: d, memo: "", createdAt: base + n, link }));
         n++;
       }
       $("repeatBox").hidden = true;
@@ -437,7 +446,8 @@ export function install(app) {
         $("rName").focus();
         return;
       }
-      const items = srcItems(saveSrc || { date: $("date").value || app.today, g: null }).map(planOf);
+      const src = srcItems(saveSrc || { date: $("date").value || app.today, g: null });
+      const items = src.map((e, k) => Object.assign(planOf(e), linkedTo(e, src[k + 1]) ? { link: true } : {}));
       if (!items.length) {
         app.toast("Esa sesión no tiene ejercicios.");
         return;
@@ -457,7 +467,7 @@ export function install(app) {
       const r = app.routines[+b.dataset.rload];
       if (!r) return;
       b.disabled = true;
-      await addPlans(r.items, "“" + r.name + "”", null, r.circuit);
+      await addPlans(routineItems(r), "“" + r.name + "”", null);
       return;
     }
     if (b.dataset.rdel != null) {

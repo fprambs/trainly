@@ -1,6 +1,6 @@
 // Hoy: tarjeta de sesión, barra Te toca y tarjetas de ejercicios.
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { doneArr, sessionStart, sessLabel, sessDur } from "../lib/sessions.js";
+import { doneArr, sessionStart, sessLabel, sessDur, linkedTo, blocksOf, byCreated } from "../lib/sessions.js";
 import { esc, fmtSecs, fmtSess } from "../lib/format.js";
 
 export function install(app) {
@@ -116,7 +116,7 @@ export function install(app) {
   }
 
   // ---------- Hoy: tarjetas ----------
-  function cardHTML(e, nx) {
+  function cardHTML(e, nx, pos) {
     const ds = doneArr(e),
       n = ds.filter(Boolean).length,
       t = ds.length,
@@ -132,6 +132,7 @@ export function install(app) {
       : "";
     return (
       '<div class="entry tcard' +
+      (pos ? " blk blk-" + pos : "") +
       (full ? " done" : "") +
       (cur ? " cur" : "") +
       (e.createdAt === app.lastNew ? " new" : "") +
@@ -160,8 +161,71 @@ export function install(app) {
       "</div>"
     );
   }
+  // botón entre dos tarjetas: une (o separa) un ejercicio con el siguiente para hacerlos en circuito
+  const CHAIN =
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
+  app.CHAIN = CHAIN;
+  const linkBtn = (attr, on) =>
+    '<button type="button" class="tlink' +
+    (on ? " on" : "") +
+    '" ' +
+    attr +
+    ' aria-pressed="' +
+    on +
+    '" aria-label="' +
+    (on ? "Separar: dejar de hacerlos en circuito" : "Unir con el siguiente para hacerlos en circuito") +
+    '">' +
+    CHAIN +
+    "<span>" +
+    (on ? "En circuito" : "Unir") +
+    "</span></button>";
+  app.linkBtn = linkBtn;
+  // tarjetas con sus bloques: «Circuito A · 3 rondas» y el botón de unir entre cada par
+  function listHTML(entries, nx, letter) {
+    return blocksOf(entries)
+      .map((b, bi, all) => {
+        const multi = b.length > 1,
+          rounds = Math.max(0, ...b.map(e => doneArr(e).length));
+        return (
+          (multi
+            ? '<div class="blkhead">' +
+              CHAIN +
+              "Circuito " +
+              String.fromCharCode(65 + letter.n++) +
+              (rounds ? " · " + rounds + (rounds === 1 ? " ronda" : " rondas") : "") +
+              "</div>"
+            : "") +
+          b
+            .map(
+              (e, i) =>
+                cardHTML(e, nx, multi ? (i === 0 ? "first" : i === b.length - 1 ? "last" : "mid") : "") +
+                (i < b.length - 1 ? linkBtn('data-link="' + esc(e.id) + '"', true) : "")
+            )
+            .join("") +
+          (bi < all.length - 1 ? linkBtn('data-link="' + esc(b[b.length - 1].id) + '"', false) : "")
+        );
+      })
+      .join("");
+  }
+  // unir/separar: se guarda en cada ejercicio si va unido al siguiente (y se pasa del formato antiguo de circuito)
+  async function toggleLink(id) {
+    const e = app.entries.find(x => x.id === id);
+    if (!e) return;
+    const day = app.entries.filter(x => x.date === e.date).sort(byCreated),
+      i = day.indexOf(e);
+    if (i < 0 || i === day.length - 1) return;
+    const want = day.map((x, k) => (k === i ? !linkedTo(e, day[i + 1]) : linkedTo(x, day[k + 1])));
+    for (let k = 0; k < day.length; k++) {
+      const x = day[k],
+        patch = {};
+      if (!!x.link !== want[k]) patch.link = want[k];
+      if (x.circuit) patch.circuit = false;
+      if (Object.keys(patch).length) await app.store.update(x.id, patch);
+    }
+  }
   function cardsHTML(groups, nx) {
-    if (groups.length < 2) return groups[0].entries.map(e => cardHTML(e, nx)).join("");
+    const letter = { n: 0 };
+    if (groups.length < 2) return listHTML(groups[0].entries, nx, letter);
     return groups
       .map(
         g =>
@@ -169,11 +233,17 @@ export function install(app) {
           esc(sessLabel(g)) +
           (sessDur(g) && g.end > g.start ? " <span>· " + fmtSess(sessDur(g)) + "</span>" : "") +
           "</div>" +
-          g.entries.map(e => cardHTML(e, nx)).join("")
+          listHTML(g.entries, nx, letter)
       )
       .join("");
   }
   document.addEventListener("click", ev => {
+    const lk = ev.target.closest("[data-link]");
+    if (lk) {
+      ev.stopPropagation();
+      toggleLink(lk.dataset.link);
+      return;
+    }
     const g = ev.target.closest("[data-go]");
     if (g) {
       ev.stopPropagation();

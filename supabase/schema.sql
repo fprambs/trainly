@@ -431,3 +431,6 @@ grant execute on function public.ai_take_cost(int) to authenticated;
 alter table public.bank_exercises
   add column if not exists name_en text,
   add column if not exists source_id text;
+
+-- Circuitos por bloques: el ejercicio va unido al siguiente (se hacen por rondas). Reemplaza a `circuit` (todo el día).
+alter table public.entries add column if not exists link boolean not null default false;
