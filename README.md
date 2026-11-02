@@ -52,6 +52,15 @@ que instala cada parte de la app sobre un objeto compartido `app` (el estado com
 Regla simple: lo que usa una sola pantalla queda como variable local de su archivo;
 lo que comparten varias va en `app`. El orden de instalación en `src/app.js` importa.
 
+## Banco común de ejercicios
+
+Unos 470 ejercicios: los 26 con video propio y ~440 tomados de
+[exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset) (datos con licencia MIT).
+Cada fila de `bank_exercises` tiene el nombre en español (`name`), en inglés (`name_en`, el buscador
+encuentra por ambos) y el id del dataset (`source_id`). El equipo, el músculo y los pasos en español
+están en `public/data/bank-info.json` y se cargan al abrir la primera ficha.
+Las imágenes y GIF del dataset son de Gym visual y no se incluyen: hace falta su permiso.
+
 ## Pruebas
 ```bash
 npm test        # revisión del código (ESLint) + 76 pruebas en celular, celular chico, tablet y tablet horizontal

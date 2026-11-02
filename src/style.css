@@ -7164,3 +7164,56 @@ body:not([data-tab="anotar"]) .tabs .rest .rpre {
   width: 26px;
   height: 26px;
 }
+
+/* ---------- nombre en inglés y «Cómo se hace» (banco común) ---------- */
+.sugg .sen,
+.bname .ben {
+  display: block;
+  font-style: normal;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+}
+.fihow {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface2);
+  padding: 0 14px;
+}
+.fihow summary {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  flex-wrap: wrap;
+  min-height: 52px;
+  padding: 10px 0;
+  cursor: pointer;
+  list-style: none;
+}
+.fihow summary::-webkit-details-marker {
+  display: none;
+}
+.fihow summary::after {
+  content: "▾";
+  margin-left: auto;
+  color: var(--muted);
+  transition: transform 0.2s;
+}
+.fihow[open] summary::after {
+  transform: rotate(180deg);
+}
+.fihow summary small {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.fihow ol {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.fihow .hint {
+  margin: 0 0 12px;
+}

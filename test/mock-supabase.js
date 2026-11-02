@@ -22,14 +22,21 @@ if (!DB.bank_exercises)
     ["remo_ergometro", "Remo Ergometro", "cardio"],
     ["remo_en_t", "Remo en T", "espalda"],
     ["pull_ups", "Pull ups", "espalda"],
-    ["hip_thrust_en_maquina", "Hip Thrust en Maquina", "gluteos"]
+    ["hip_thrust_en_maquina", "Hip Thrust en Maquina", "gluteos"],
+    ["sentadilla_goblet", "Sentadilla goblet", "piernas"]
   ].map(([key, name, category]) => ({
     key,
     name,
     category,
     per_side: ["vuelo_lateral", "press_inclinado_con_mancuernas", "bulgaras", "press_militar_sentado"].includes(key),
-    image_url: "/media/" + key + ".mp4",
-    image_type: "video/mp4"
+    image_url: key === "sentadilla_goblet" ? null : "/media/" + key + ".mp4",
+    image_type: key === "sentadilla_goblet" ? null : "video/mp4",
+    ...{
+      peso_muerto: { name_en: "barbell deadlift", source_id: "0032" },
+      vuelo_lateral: { name_en: "dumbbell lateral raise", source_id: "0334" },
+      pull_ups: { name_en: "pull-up", source_id: "0652" },
+      sentadilla_goblet: { name_en: "dumbbell goblet squat", source_id: "1760" }
+    }[key]
   }));
 const save = () => localStorage.setItem("mockdb", JSON.stringify(DB));
 const uid4 = () => crypto.randomUUID();

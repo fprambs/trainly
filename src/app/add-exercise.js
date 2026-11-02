@@ -132,7 +132,10 @@ export function install(app) {
     const used = [...new Set(app.entries.map(e => e.name))].filter(n => !app.inCatalog(n));
     const pool = app.catalog.map(n => ({ n, saved: true })).concat(app.sortCat(used).map(n => ({ n, saved: false })));
     const words = q ? q.split(" ") : [];
-    sugg = pool.filter(o => words.every(w => norm(o.n).includes(w))).slice(0, 10);
+    sugg = pool
+      .map(o => ({ ...o, by: app.matchName(o.n, words) }))
+      .filter(o => o.by)
+      .slice(0, 10);
     active = -1;
     if (!sugg.length) {
       if (!q) {
@@ -152,7 +155,9 @@ export function install(app) {
             '" aria-selected="false">' +
             (r ? mediaHTML(r, "sthumb") : "") +
             "<span>" +
-            highlight(o.n, q) +
+            (o.by === "en"
+              ? esc(o.n) + '<em class="sen" lang="en">' + highlight(app.nameEn(o.n), q) + "</em>"
+              : highlight(o.n, q)) +
             "</span><small>" +
             (o.saved ? app.originTag(o.n) || "Guardado" : "Usado antes") +
             "</small></li>"

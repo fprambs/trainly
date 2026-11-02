@@ -215,6 +215,29 @@ test("ejercicios: filtro por músculo", async ({ page }) => {
   await layoutOk(page);
 });
 
+test("banco: busca en español o inglés y muestra cómo se hace", async ({ page }) => {
+  const errors = await start(page);
+  await page.click("#addOpen");
+  await page.fill("#name", "goblet");
+  await expect(page.locator("#sugg li[role=option]").first()).toContainText("Sentadilla goblet");
+  await page.fill("#name", "lateral raise");
+  const op = page.locator("#sugg li[role=option]").first();
+  await expect(op).toContainText("Vuelo lateral");
+  await expect(op.locator(".sen")).toHaveText("dumbbell lateral raise");
+  await page.click("#addClose");
+  await page.click("#t-ejercicios");
+  await page.fill("#catNew", "deadlift");
+  await expect(page.locator(".bcell")).toHaveCount(1);
+  await page.click(".bcell");
+  const how = page.locator(".fihow");
+  await expect(how).toContainText("Barra");
+  await how.locator("summary").click();
+  await expect(how.locator("ol li").first()).toBeVisible();
+  await expect(how).toContainText("barbell deadlift");
+  await layoutOk(page);
+  expect(errors).toEqual([]);
+});
+
 test("modo profesor: se ve a quién se anota", async ({ page }) => {
   await start(page, { seed: false, coach: true });
   await page.click("#acctBtn");
@@ -269,7 +292,8 @@ test("admin: editar el banco común con 'Guardar cambios'", async ({ page }) => 
   const errors = await start(page);
   // convertir a esta cuenta en administradora (solo en la base simulada)
   await page.evaluate(() => {
-    const db = JSON.parse(localStorage.mockdb), me = JSON.parse(localStorage.mocksession).user.id;
+    const db = JSON.parse(localStorage.mockdb),
+      me = JSON.parse(localStorage.mocksession).user.id;
     db.profiles.find(p => p.id === me).is_admin = true;
     localStorage.mockdb = JSON.stringify(db);
   });

@@ -2,7 +2,7 @@
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
 import { optimizeVideo, optimizeImage, posterURL } from "../media.js";
 import { doneArr, splitSessions } from "../lib/sessions.js";
-import { iso, imgKey, fmtSecs } from "../lib/format.js";
+import { iso, imgKey, norm, fmtSecs } from "../lib/format.js";
 
 export function install(app) {
   const { $, env } = app;
@@ -220,6 +220,11 @@ export function install(app) {
         by[k].img = { id: "bank:" + k, url: b.image_url, type: b.image_type || "image/png" };
       if (!by[k].cat && b.category) by[k].cat = { c: b.category, by: "bank" };
     });
+    // nombre en inglés de los ejercicios del banco: el buscador encuentra por ambos
+    app.enNames = {};
+    app.bankRows.forEach(b => {
+      if (b.name_en) app.enNames[imgKey(b.name)] = b.name_en;
+    });
     const alias = {};
     app.bankRows.forEach(b => {
       const a = imgKey(b.name);
@@ -243,6 +248,13 @@ export function install(app) {
   }
   // ---------- administración del banco común (solo admin) ----------
   app.isAdmin = () => !!(env.isAdmin && env.isAdmin());
+  app.nameEn = n => (app.enNames && app.enNames[imgKey(n)]) || "";
+  // ¿el nombre (en español o en inglés) contiene todas las palabras buscadas? Devuelve "es", "en" o "".
+  app.matchName = (n, words) => {
+    if (!words.length || words.every(w => norm(n).includes(w))) return "es";
+    const en = norm(app.nameEn(n));
+    return en && words.every(w => en.includes(w)) ? "en" : "";
+  };
   app.bankRowOf = n => app.bankRows.find(b => b.key === imgKey(n) || imgKey(b.name) === imgKey(n)) || null;
   async function bankSave(key, patch) {
     const { error } = await sb.from("bank_exercises").update(patch).eq("key", key);

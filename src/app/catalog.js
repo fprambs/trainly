@@ -267,9 +267,7 @@ export function install(app) {
     renderCatFilter(pool);
     const q = norm($("catNew").value),
       words = q ? q.split(" ") : [];
-    const vis = pool.filter(
-      n => (!words.length || words.every(w => norm(n).includes(w))) && (!catFilter || app.catOf(n) === catFilter)
-    );
+    const vis = pool.filter(n => app.matchName(n, words) && (!catFilter || app.catOf(n) === catFilter));
     if (!pool.length) {
       g.innerHTML =
         '<p class="hint exempty">' +
@@ -315,6 +313,9 @@ export function install(app) {
                   (r ? app.mediaHTML(r) : "<i>" + esc(n.charAt(0).toUpperCase()) + "</i>") +
                   '</span><span class="bname">' +
                   esc(n) +
+                  (words.length && app.matchName(n, words) === "en"
+                    ? '<small class="ben" lang="en">' + esc(app.nameEn(n)) + "</small>"
+                    : "") +
                   "</span></button>"
                 );
               })
@@ -358,6 +359,48 @@ export function install(app) {
     $("ficha").innerHTML = "";
     if ($("smOv").hidden) document.body.classList.remove("sm-open");
   }
+  // «Cómo se hace» (equipo, músculo y pasos) de los ejercicios del banco que vienen del dataset; se carga al abrir la primera ficha
+  let bankInfo = null,
+    infoReq = null,
+    howOpen = false;
+  function loadInfo() {
+    if (!infoReq)
+      infoReq = fetch(import.meta.env.BASE_URL + "data/bank-info.json")
+        .then(r => (r.ok ? r.json() : {}))
+        .catch(() => ({}))
+        .then(j => {
+          bankInfo = j;
+          renderFicha();
+        });
+  }
+  function howHTML(n) {
+    const b = app.bankRowOf(n);
+    if (!b || !b.source_id) return "";
+    if (!bankInfo) {
+      loadInfo();
+      return "";
+    }
+    const x = bankInfo[b.source_id];
+    if (!x) return "";
+    const [eq, tg, steps] = x;
+    return (
+      '<details class="fihow"' +
+      (howOpen ? " open" : "") +
+      "><summary><b>Cómo se hace</b><small>" +
+      esc([eq, tg].filter(Boolean).join(" · ")) +
+      "</small></summary>" +
+      (steps && steps.length ? "<ol>" + steps.map(t => "<li>" + esc(t) + "</li>").join("") + "</ol>" : "") +
+      (b.name_en ? '<p class="hint">En inglés: <span lang="en">' + esc(b.name_en) + "</span></p>" : "") +
+      "</details>"
+    );
+  }
+  $("ficha").addEventListener(
+    "toggle",
+    e => {
+      if (e.target.classList && e.target.classList.contains("fihow")) howOpen = e.target.open;
+    },
+    true
+  );
   function renderFicha() {
     if (!fichaN) return;
     const i = app.catalog.indexOf(fichaN);
@@ -440,6 +483,7 @@ export function install(app) {
           ).join("") +
           "</div>"
         : "") +
+      howHTML(n) +
       '<button type="button" class="sidetog" role="switch" aria-checked="' +
       app.perSide(n) +
       '" data-side="' +

@@ -425,3 +425,9 @@ begin
 end $$;
 revoke all on function public.ai_take_cost(int) from public, anon;
 grant execute on function public.ai_take_cost(int) to authenticated;
+
+-- Banco común ampliado con exercises-dataset (datos MIT): nombre en inglés para buscar por ambos idiomas
+-- y el id del dataset; el equipo, músculo y pasos en español se sirven desde public/data/bank-info.json.
+alter table public.bank_exercises
+  add column if not exists name_en text,
+  add column if not exists source_id text;
