@@ -442,6 +442,9 @@ export function install(app) {
     $("todayList").hidden = !list.length;
     $("emptyDay").hidden = !!list.length;
     $("sumBtn").hidden = !list.length;
+    $("linkBtn").hidden = list.length < 2;
+    if (list.length < 2) app.linkEdit = false;
+    app.paintLinkBtn();
     if (app.sumState && !$("sumOv").hidden) app.renderSummary();
     const nx = app.findNext(cur);
     $("todayList").innerHTML = list.length ? app.cardsHTML(groups, nx) : "";

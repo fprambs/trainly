@@ -132,19 +132,35 @@ test("circuito por bloques: unir ejercicios y hacerlos por rondas", async ({ pag
   const names = await cards.locator(".tinfo b").allTextContents();
   const i = names.findIndex(n => n.trim().startsWith(first));
   const second = names[i + 1].trim();
+  // los eslabones solo aparecen en "Armar circuitos"
+  await expect(page.locator(".tlink")).toHaveCount(0);
+  await page.click("#linkBtn");
   await page.locator(".tcard").nth(i).locator("xpath=following-sibling::button[contains(@class,'tlink')][1]").click();
-  await expect(page.locator(".blkhead")).toHaveCount(1);
+  await expect(page.locator(".blkbox .blkhead")).toHaveCount(1);
   await expect(page.locator(".blkhead")).toContainText("Circuito A");
-  await expect(page.locator(".tcard.blk")).toHaveCount(2);
+  await expect(page.locator(".blkbox .tcard")).toHaveCount(2);
+  // tercer ejercicio también al circuito
+  await page.locator(".blkbox").locator("xpath=following-sibling::button[contains(@class,'tlink')][1]").click();
+  await expect(page.locator(".blkbox .tcard")).toHaveCount(3);
   await layoutOk(page);
+  await page.click("#linkBtn");
+  await expect(page.locator(".tlink")).toHaveCount(0);
   // serie 1 del primero → luego serie 1 del segundo (no la serie 2 del mismo)
   await page.click("#teToca .tt-go");
   await page.click("#smOk");
   await expect(page.locator("#rNext")).toContainText(second);
   await expect(page.locator("#rNext")).toContainText("serie 1");
-  // separar vuelve al orden por ejercicio
-  await page.locator(".tlink.on").first().click();
-  await expect(page.locator(".blkhead")).toHaveCount(0);
+  // serie 1 del segundo → serie 1 del tercero → vuelve al primero (serie 2): siempre en orden
+  await page.click("#rNext [data-go]");
+  await page.click("#smOk");
+  await page.click("#rNext [data-go]");
+  await page.click("#smOk");
+  await expect(page.locator("#rNext")).toContainText(first);
+  await expect(page.locator("#rNext")).toContainText("serie 2");
+  // separar todos
+  await page.click("#linkBtn");
+  await page.click("[data-unblk]");
+  await expect(page.locator(".blkbox")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -156,7 +172,7 @@ test("rutina: unir ejercicios en el editor y cargarla con el circuito", async ({
   await page.locator("[data-rlink='0']").click();
   await expect(page.locator("[data-rlink='0']")).toHaveAttribute("aria-pressed", "true");
   await page.locator("[data-redit]").first().click();
-  await expect(page.locator(".rutlink")).toHaveCount(1);
+  await expect(page.locator(".rutex.blk")).toHaveCount(2);
   await layoutOk(page);
 });
 

@@ -7240,74 +7240,116 @@ body:not([data-tab="anotar"]) .tabs .rest .rpre {
   object-fit: contain;
 }
 
-/* ---------- circuitos: unir ejercicios entre tarjetas ---------- */
-.tlink {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 34px;
-  margin: -6px 0;
-  padding: 0 14px;
-  border-radius: 999px;
-  border: 1px dashed var(--line);
-  background: var(--bg);
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
-  position: relative;
-  z-index: 1;
-  cursor: pointer;
-}
-.tlink svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-.tlink.on {
-  border-style: solid;
-  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-  background: var(--soft);
-  color: var(--accent);
-}
-.tlink:focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-.tcard.blk {
-  box-shadow:
-    inset 4px 0 0 var(--accent),
-    var(--shadow);
+/* ---------- circuitos ---------- */
+/* cada circuito es una sub-tarjeta con sus ejercicios */
+.blkbox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 8px 8px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .blkhead {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 6px 2px -2px;
+  min-height: 24px;
+  padding: 0 6px;
   color: var(--accent);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.blkhead svg {
-  width: 14px;
-  height: 14px;
+.blkhead > span {
+  flex: 1;
+}
+.blkhead svg,
+.linkhint svg,
+.linkmode svg,
+.tlink svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
   fill: none;
   stroke: currentColor;
   stroke-width: 2.2;
   stroke-linecap: round;
+}
+.blkoff {
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.74rem;
+  text-transform: none;
+  letter-spacing: 0;
+  text-decoration: underline;
+  padding: 4px 2px;
+  cursor: pointer;
+}
+.blkbox .tcard {
+  box-shadow: none;
+}
+/* eslabón (solo en "Armar circuitos"): se monta en el hueco entre tarjetas, sin agregar espacio */
+.tlink {
+  align-self: center;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -21px 0;
+  border-radius: 50%;
+  border: 1.5px dashed var(--muted);
+  background: var(--surface);
+  color: var(--muted);
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.18);
+}
+.tlink.on {
+  border: 0;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.tlink:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.linkmode {
+  min-width: 44px;
+  display: inline-grid;
+  place-items: center;
+}
+.linkmode svg {
+  width: 18px;
+  height: 18px;
+}
+.linkhint {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0 2px 4px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+.linkhint svg {
+  margin-top: 2px;
+  color: var(--accent);
 }
 .rutex.blk {
   box-shadow: inset 3px 0 0 var(--accent);
   padding-left: 10px;
 }
 .rutexs .tlink {
-  margin: 4px 0;
+  margin: -17px 0;
+}
+.rutex.blkstart {
+  margin-top: 6px;
 }
 .rutcirc {
   display: flex;

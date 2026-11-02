@@ -79,6 +79,7 @@ export function install(app) {
             return (
               '<div class="rutex' +
               (inBlk ? " blk" : "") +
+              (it.link && !(ii > 0 && its[ii - 1].link) ? " blkstart" : "") +
               '">' +
               (im
                 ? app.mediaHTML(im, "mini")
@@ -108,9 +109,7 @@ export function install(app) {
               (ii < its.length - 1
                 ? ed
                   ? app.linkBtn('data-rlink="' + ii + '" data-rid="' + esc(r.id) + '"', !!it.link)
-                  : it.link
-                    ? '<span class="tlink on rutlink">' + app.CHAIN + "<span>En circuito</span></span>"
-                    : ""
+                  : ""
                 : "")
             );
           })

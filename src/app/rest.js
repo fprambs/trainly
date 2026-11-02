@@ -273,8 +273,15 @@ export function install(app) {
       if (x) anchor = x;
     }
     if (anchor) {
-      const nx = nextIn(blocks.find(b => b.includes(anchor)));
-      if (nx) return nx;
+      const b = blocks.find(x => x.includes(anchor));
+      // en un circuito se sigue en orden: el ejercicio siguiente al recién hecho (y vuelta al primero)
+      if (b.length > 1) {
+        const k = b.indexOf(anchor);
+        for (let j = 1; j <= b.length; j++) {
+          const e = b[(k + j) % b.length];
+          if (pend(e) >= 0) return { e, r: pend(e) };
+        }
+      } else if (pend(anchor) >= 0) return { e: anchor, r: pend(anchor) };
     }
     for (const b of blocks) {
       const nx = nextIn(b);
