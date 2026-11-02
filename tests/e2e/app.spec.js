@@ -84,6 +84,46 @@ test("agregar un ejercicio y el formulario se limpia al cerrar", async ({ page }
   expect(errors).toEqual([]);
 });
 
+test("la tarjeta que toca muestra su borde completo (no se recorta)", async ({ page }) => {
+  await start(page);
+  const cur = page.locator(".tcard.cur");
+  await expect(cur).toHaveCount(1);
+  const ok = await cur.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const off = parseFloat(getComputedStyle(el).outlineOffset) || 0;
+    const w = parseFloat(getComputedStyle(el).outlineWidth) || 0;
+    const out = Math.max(0, off + w); // cuánto sobresale el borde fuera de la tarjeta
+    for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.overflowX !== "visible" || cs.overflow !== "visible") {
+        const q = p.getBoundingClientRect();
+        if (r.left - out < q.left - 0.5 || r.right + out > q.right + 0.5) return false;
+      }
+    }
+    return true;
+  });
+  expect(ok).toBe(true);
+});
+
+test("foto o video cuadrado se ve completo en modo entrenamiento y en la ficha", async ({ page }) => {
+  await start(page);
+  const inside = sel =>
+    page.locator(sel).evaluate(m => {
+      const v = m.querySelector("video,img").getBoundingClientRect(),
+        r = m.getBoundingClientRect();
+      return v.top >= r.top - 1 && v.bottom <= r.bottom + 1 && v.left >= r.left - 1 && v.right <= r.right + 1;
+    });
+  await page.click("#focusOpen");
+  await expect(page.locator(".fmedia video, .fmedia img")).toHaveCount(1);
+  expect(await inside(".fmedia")).toBe(true);
+  await page.keyboard.press("Escape");
+  await page.click("#t-ejercicios");
+  await page.fill("#catNew", "vuelo");
+  await page.click(".bcell");
+  await expect(page.locator(".fimedia video, .fimedia img")).toHaveCount(1);
+  expect(await inside(".fimedia")).toBe(true);
+});
+
 test("sin nombre muestra un mensaje propio", async ({ page }) => {
   await start(page);
   await page.click("#addOpen");

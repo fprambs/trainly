@@ -4049,12 +4049,14 @@ body.add-open {
 .tcard:active {
   transform: scale(0.985);
 }
+/* el borde va por dentro: la lista recorta lo que sobresale a los lados (deslizar entre días) */
 .tcard:focus-visible {
   outline: 3px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -3px;
 }
 .tcard.cur {
   outline: 2px solid var(--accent);
+  outline-offset: -2px;
   box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 22%, transparent);
 }
 .tcard.done {
@@ -7216,4 +7218,24 @@ body:not([data-tab="anotar"]) .tabs .rest .rpre {
 }
 .fihow .hint {
   margin: 0 0 12px;
+}
+
+/* foto o video grande: siempre completo dentro del recuadro 16:9 (con franjas si es cuadrado o vertical).
+   Con altura automática el 100% no se resolvía y un video cuadrado quedaba más alto que el recuadro y se cortaba. */
+.fmedia,
+.dmedia,
+.fimedia {
+  position: relative;
+}
+.fmedia > img,
+.fmedia > video,
+.dmedia > img,
+.dmedia > video,
+.fimedia > img,
+.fimedia > video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
