@@ -220,6 +220,8 @@ test("banco: busca en español o inglés y muestra cómo se hace", async ({ page
   await page.click("#addOpen");
   await page.fill("#name", "goblet");
   await expect(page.locator("#sugg li[role=option]").first()).toContainText("Sentadilla goblet");
+  // foto del banco: miniatura fija liviana en la lista
+  await expect(page.locator("#sugg li[role=option] img").first()).toHaveAttribute("src", /sentadilla_goblet-t\.webp$/);
   await page.fill("#name", "lateral raise");
   const op = page.locator("#sugg li[role=option]").first();
   await expect(op).toContainText("Vuelo lateral");

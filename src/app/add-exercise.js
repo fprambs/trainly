@@ -27,6 +27,8 @@ export function install(app) {
   app.imgOf = n => app.images[imgKey(n)] || null;
   app.srcOf = r => r.url || "/_blob/" + r.id;
   app.isVid = r => (r.type || "").startsWith("video/");
+  // fotos del banco (free-exercise-db): animación de 2 cuadros en grande y una miniatura fija liviana en listas
+  const thumbSrc = u => (/\/media\/ex\/[^/?]+\.webp$/.test(u) ? u.replace(/\.webp$/, "-t.webp") : u);
   // miniaturas: los videos se muestran como imagen fija (poster) para no descargar ni reproducir todos a la vez
   function mediaHTML(r, cls, dataN) {
     const a = (cls ? ' class="' + cls + '"' : "") + (dataN != null ? ' data-n="' + esc(dataN) + '"' : "");
@@ -43,7 +45,7 @@ export function install(app) {
       );
     return app.isVid(r)
       ? "<video" + a + ' src="' + esc(app.srcOf(r)) + '" muted loop autoplay playsinline preload="metadata"></video>'
-      : "<img" + a + ' src="' + esc(app.srcOf(r)) + '" loading="lazy" decoding="async" alt="">';
+      : "<img" + a + ' src="' + esc(thumbSrc(app.srcOf(r))) + '" loading="lazy" decoding="async" alt="">';
   }
   // vistas grandes (detalle, ficha, modo entrenamiento, pantalla completa): el video en movimiento
   function mediaBig(r, cls) {

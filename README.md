@@ -59,7 +59,9 @@ Unos 470 ejercicios: los 26 con video propio y ~440 tomados de
 Cada fila de `bank_exercises` tiene el nombre en español (`name`), en inglés (`name_en`, el buscador
 encuentra por ambos) y el id del dataset (`source_id`). El equipo, el músculo y los pasos en español
 están en `public/data/bank-info.json` y se cargan al abrir la primera ficha.
-Las imágenes y GIF del dataset son de Gym visual y no se incluyen: hace falta su permiso.
+Las imágenes y GIF de ese dataset son de Gym visual y no se incluyen. Las fotos de los ejercicios vienen de
+[free-exercise-db](https://github.com/yuhonas/free-exercise-db) (dominio público, Unlicense): están en
+`public/media/ex/<key>.webp` (animación de 2 cuadros) y `<key>-t.webp` (miniatura fija).
 
 ## Pruebas
 ```bash

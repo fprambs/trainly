@@ -29,8 +29,8 @@ if (!DB.bank_exercises)
     name,
     category,
     per_side: ["vuelo_lateral", "press_inclinado_con_mancuernas", "bulgaras", "press_militar_sentado"].includes(key),
-    image_url: key === "sentadilla_goblet" ? null : "/media/" + key + ".mp4",
-    image_type: key === "sentadilla_goblet" ? null : "video/mp4",
+    image_url: key === "sentadilla_goblet" ? "/media/ex/sentadilla_goblet.webp" : "/media/" + key + ".mp4",
+    image_type: key === "sentadilla_goblet" ? "image/webp" : "video/mp4",
     ...{
       peso_muerto: { name_en: "barbell deadlift", source_id: "0032" },
       vuelo_lateral: { name_en: "dumbbell lateral raise", source_id: "0334" },
