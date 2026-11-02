@@ -124,41 +124,52 @@ test("foto o video cuadrado se ve completo en modo entrenamiento y en la ficha",
   expect(await inside(".fimedia")).toBe(true);
 });
 
-test("circuito por bloques: unir ejercicios y hacerlos por rondas", async ({ page }) => {
+// mantener presionado una tarjeta y soltarla en otra: "center" la une en circuito, "top" la pone antes
+async function dragCard(page, from, to, where = "center") {
+  await from.evaluate(el => el.scrollIntoView({ block: "center" }));
+  await page.waitForTimeout(150);
+  const a = await from.boundingBox(),
+    b = await to.boundingBox();
+  await page.mouse.move(a.x + a.width / 2, a.y + a.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  const y = where === "top" ? b.y + 4 : b.y + b.height / 2;
+  await page.mouse.move(b.x + b.width / 2, y, { steps: 12 });
+  await page.mouse.up();
+}
+
+test("circuito por bloques: unir arrastrando y hacerlos por rondas", async ({ page }) => {
   const errors = await start(page);
-  // Te toca parte en el primer ejercicio pendiente: se une con el siguiente
   const first = (await page.locator("#teToca .tt-info b").textContent()).trim();
-  const cards = page.locator(".tcard");
-  const names = await cards.locator(".tinfo b").allTextContents();
-  const i = names.findIndex(n => n.trim().startsWith(first));
-  const second = names[i + 1].trim();
-  // los eslabones solo aparecen en "Armar circuitos"
-  await expect(page.locator(".tlink")).toHaveCount(0);
-  await page.click("#linkBtn");
-  await page.locator(".tcard").nth(i).locator("xpath=following-sibling::button[contains(@class,'tlink')][1]").click();
-  await expect(page.locator(".blkbox .blkhead")).toHaveCount(1);
-  await expect(page.locator(".blkhead")).toContainText("Circuito A");
+  const card = n => page.locator(".tcard", { hasText: n });
+  const names = (await page.locator(".tcard .tinfo b").allTextContents()).map(x => x.replace("★", "").trim());
+  const i = names.findIndex(n => n.startsWith(first));
+  const second = names[i + 1],
+    third = names[i + 2];
+  // soltar el segundo sobre el primero: nuevo circuito
+  await dragCard(page, card(second), card(first));
   await expect(page.locator(".blkbox .tcard")).toHaveCount(2);
-  // tercer ejercicio también al circuito
-  await page.locator(".blkbox").locator("xpath=following-sibling::button[contains(@class,'tlink')][1]").click();
+  await expect(page.locator(".blkhead")).toContainText("Circuito A");
+  // soltar el tercero sobre uno del circuito: se suma
+  await dragCard(page, card(third), card(second));
   await expect(page.locator(".blkbox .tcard")).toHaveCount(3);
   await layoutOk(page);
-  await page.click("#linkBtn");
-  await expect(page.locator(".tlink")).toHaveCount(0);
-  // serie 1 del primero → luego serie 1 del segundo (no la serie 2 del mismo)
+  // rondas en orden: 1º → 2º → 3º → vuelta al 1º (serie 2)
   await page.click("#teToca .tt-go");
   await page.click("#smOk");
   await expect(page.locator("#rNext")).toContainText(second);
   await expect(page.locator("#rNext")).toContainText("serie 1");
-  // serie 1 del segundo → serie 1 del tercero → vuelve al primero (serie 2): siempre en orden
   await page.click("#rNext [data-go]");
   await page.click("#smOk");
   await page.click("#rNext [data-go]");
   await page.click("#smOk");
   await expect(page.locator("#rNext")).toContainText(first);
   await expect(page.locator("#rNext")).toContainText("serie 2");
-  // separar todos
-  await page.click("#linkBtn");
+  await page.click("[data-r=skip]");
+  // sacar uno arrastrándolo fuera (antes del primer ejercicio de la lista)
+  await dragCard(page, card(third), page.locator(".tcard").first(), "top");
+  await expect(page.locator(".blkbox .tcard")).toHaveCount(2);
+  // separar el resto
   await page.click("[data-unblk]");
   await expect(page.locator(".blkbox")).toHaveCount(0);
   expect(errors).toEqual([]);

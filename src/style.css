@@ -7367,3 +7367,40 @@ body:not([data-tab="anotar"]) .tabs .rest .rpre {
   stroke-width: 2;
   stroke-linecap: round;
 }
+
+/* arrastrar en Hoy: soltar sobre un ejercicio lo une en circuito */
+.tcard.drop-join {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--soft);
+}
+body[data-tab="anotar"].is-dragging::after {
+  content: "Suelta entre dos para moverlo · sobre otro para unirlos en circuito";
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  z-index: 50;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+body[data-tab="anotar"].is-dragging.drag-join::after {
+  content: "Suelta para unirlos en circuito";
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+body[data-tab="anotar"] .tcard.dragging {
+  scale: 0.94;
+}
+body.drag-join .tcard.dragging {
+  opacity: 0.55;
+}

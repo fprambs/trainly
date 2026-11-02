@@ -1,6 +1,6 @@
 // Hoy: dibujar la lista y reordenar arrastrando.
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { ordOf, doneArr, byCreated } from "../lib/sessions.js";
+import { ordOf, doneArr, byCreated, linkedTo } from "../lib/sessions.js";
 import { esc, fmtN, fmtTime, fmtDist } from "../lib/format.js";
 
 export function install(app) {
@@ -60,7 +60,8 @@ export function install(app) {
     const el = ev.target.closest(".entry[data-id]");
     if (!el) return;
     if (ev.target.closest("button,input,textarea,a,select,.mini,.sets,.eedit,.seted")) return;
-    const box = el.parentElement;
+    // en Hoy la lista completa (los circuitos van en sub-tarjetas); en otras listas, los hermanos
+    const box = el.closest("#todayList") || el.parentElement;
     cancelPress();
     press = {
       el,
@@ -113,14 +114,24 @@ export function install(app) {
     app.drag.el.style.transform = "translateY(" + dy + "px)";
     if (ev.clientY < 90) window.scrollBy(0, -12);
     else if (ev.clientY > window.innerHeight - 170) window.scrollBy(0, 12);
-    const items = [...app.drag.box.querySelectorAll(":scope > .entry[data-id]")].filter(x => x !== app.drag.el);
+    const today = app.drag.box.id === "todayList";
+    const items = [...app.drag.box.querySelectorAll(today ? ".entry[data-id]" : ":scope > .entry[data-id]")].filter(
+      x => x !== app.drag.el
+    );
     app.drag.box
-      .querySelectorAll(".drop-before,.drop-after")
-      .forEach(x => x.classList.remove("drop-before", "drop-after"));
+      .querySelectorAll(".drop-before,.drop-after,.drop-join")
+      .forEach(x => x.classList.remove("drop-before", "drop-after", "drop-join"));
+    // en Hoy: soltar en el centro de otro ejercicio = unirlo en circuito; en el borde de arriba/abajo = moverlo
     let tgt = null,
-      after = false;
+      after = false,
+      join = false;
     for (const it of items) {
       const b = it.getBoundingClientRect();
+      if (today && ev.clientY >= b.top + b.height * 0.28 && ev.clientY <= b.bottom - b.height * 0.28) {
+        tgt = it;
+        join = true;
+        break;
+      }
       if (ev.clientY < b.top + b.height / 2) {
         tgt = it;
         after = false;
@@ -130,8 +141,10 @@ export function install(app) {
       after = true;
     }
     app.drag.target = tgt;
-    app.drag.after = after;
-    if (tgt) tgt.classList.add(after ? "drop-after" : "drop-before");
+    app.drag.after = join || after;
+    app.drag.join = join;
+    if (tgt) tgt.classList.add(join ? "drop-join" : after ? "drop-after" : "drop-before");
+    document.body.classList.toggle("drag-join", join);
   });
   async function endDrag() {
     cancelPress();
@@ -142,14 +155,20 @@ export function install(app) {
       app.deferred = false;
       setTimeout(app.render, 0);
     }
-    document.body.classList.remove("is-dragging");
+    document.body.classList.remove("is-dragging", "drag-join");
     d.el.classList.remove("dragging");
     d.el.style.transform = "";
-    d.box.querySelectorAll(".drop-before,.drop-after").forEach(x => x.classList.remove("drop-before", "drop-after"));
+    d.box
+      .querySelectorAll(".drop-before,.drop-after,.drop-join")
+      .forEach(x => x.classList.remove("drop-before", "drop-after", "drop-join"));
     if (d.moved) app.lastDragEnd = Date.now();
     if (!d.moved || !d.target || !d.el.isConnected) return;
+    const today = d.box.id === "todayList";
+    const before = today ? circuitsOf(d) : null;
     // nuevo orden: entre los vecinos del punto donde lo soltaste
-    const ids = [...d.box.querySelectorAll(":scope > .entry[data-id]")].map(x => x.dataset.id).filter(x => x !== d.id);
+    const ids = [...d.box.querySelectorAll(today ? ".entry[data-id]" : ":scope > .entry[data-id]")]
+      .map(x => x.dataset.id)
+      .filter(x => x !== d.id);
     let pos = ids.indexOf(d.target.dataset.id) + (d.after ? 1 : 0);
     const list = ids.map(id => app.entries.find(x => x.id === id)).filter(Boolean);
     const prev = list[pos - 1],
@@ -172,7 +191,42 @@ export function install(app) {
       const base = ordOf(day[0]);
       for (let k = 0; k < day.length; k++) await app.store.update(day[k].id, { order: base + k * 1000 });
     } else await app.store.update(me.id, { order: o });
+    if (before) await saveCircuits(before, d);
     app.reRenderLists();
+  }
+  // circuitos al arrastrar: se calcula con qué queda unido cada ejercicio del día después de moverlo
+  // (sacarlo de su circuito, meterlo entre dos de un circuito o soltarlo sobre otro para unirlos)
+  function circuitsOf(d) {
+    const me = app.entries.find(x => x.id === d.id);
+    if (!me) return null;
+    const day = app.entries.filter(x => x.date === me.date).sort(byCreated);
+    const arr = day.map((x, k) => ({ e: x, link: linkedTo(x, day[k + 1]) }));
+    const i = arr.findIndex(x => x.e === me);
+    if (i > 0) arr[i - 1].link = arr[i - 1].link && arr[i].link;
+    const mine = arr.splice(i, 1)[0];
+    const t = arr.findIndex(x => x.e.id === d.target.dataset.id);
+    if (t < 0) return null;
+    if (d.join) {
+      mine.link = arr[t].link;
+      arr[t].link = true;
+      arr.splice(t + 1, 0, mine);
+    } else {
+      const p = t + (d.after ? 1 : 0),
+        prev = arr[p - 1];
+      mine.link = !!(prev && prev.link);
+      arr.splice(p, 0, mine);
+    }
+    arr[arr.length - 1].link = false;
+    return { arr, name: me.name, with: d.join ? arr.find(x => x.e.id === d.target.dataset.id).e.name : null };
+  }
+  async function saveCircuits(c, d) {
+    for (const x of c.arr) {
+      const patch = {};
+      if (!!x.e.link !== x.link) patch.link = x.link;
+      if (x.e.circuit) patch.circuit = false;
+      if (Object.keys(patch).length) await app.store.update(x.e.id, patch);
+    }
+    if (d.join) app.toast("“" + c.name + "” quedó en circuito con “" + c.with + "”");
   }
   document.addEventListener("pointerup", endDrag);
   document.addEventListener("pointercancel", endDrag);

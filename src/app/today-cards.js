@@ -165,8 +165,6 @@ export function install(app) {
   const CHAIN =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
   app.CHAIN = CHAIN;
-  // modo "Armar circuitos": solo ahí aparecen los eslabones entre tarjetas (no ocupan espacio: se montan en el hueco)
-  app.linkEdit = false;
   const linkBtn = (attr, on) =>
     '<button type="button" class="tlink' +
     (on ? " on" : "") +
@@ -180,58 +178,29 @@ export function install(app) {
     CHAIN +
     "</button>";
   app.linkBtn = linkBtn;
-  app.paintLinkBtn = () => {
-    const b = $("linkBtn");
-    b.innerHTML = app.linkEdit ? "Listo" : CHAIN;
-    b.classList.toggle("solid", app.linkEdit);
-    b.setAttribute("aria-pressed", String(app.linkEdit));
-    b.setAttribute("aria-label", app.linkEdit ? "Terminar de armar circuitos" : "Armar circuitos");
-  };
-  $("linkBtn").addEventListener("click", () => {
-    app.linkEdit = !app.linkEdit;
-    app.render();
-  });
-  // cada circuito va dentro de su propia tarjeta: «Circuito A · 3 rondas» y sus ejercicios
+  // cada circuito va dentro de su propia tarjeta. Para armarlos: mantener presionado un ejercicio y soltarlo
+  // sobre otro (ver today-list.js); arrastrarlo fuera de la tarjeta lo saca del circuito.
   function listHTML(entries, nx, letter) {
-    const ed = app.linkEdit;
-    return (
-      (ed && letter.n === 0 && !letter.hint
-        ? ((letter.hint = true),
-          '<p class="linkhint">' +
-            CHAIN +
-            "<span>Toca el eslabón entre dos ejercicios para unirlos: se hacen por rondas (serie 1 de cada uno, luego serie 2…). Tócalo de nuevo para sacarlo.</span></p>")
-        : "") +
-      blocksOf(entries)
-        .map((b, bi, all) => {
-          const multi = b.length > 1,
-            rounds = Math.max(0, ...b.map(e => doneArr(e).length)),
-            cards = b
-              .map(
-                (e, i) =>
-                  cardHTML(e, nx, multi ? "in" : "") +
-                  (ed && i < b.length - 1 ? linkBtn('data-link="' + esc(e.id) + '"', true) : "")
-              )
-              .join(""),
-            after = ed && bi < all.length - 1 ? linkBtn('data-link="' + esc(b[b.length - 1].id) + '"', false) : "";
-          if (!multi) return cards + after;
-          return (
-            '<div class="blkbox"><div class="blkhead">' +
-            CHAIN +
-            "<span>Circuito " +
-            String.fromCharCode(65 + letter.n++) +
-            (rounds ? " · " + rounds + (rounds === 1 ? " ronda" : " rondas") : "") +
-            "</span>" +
-            (ed
-              ? '<button type="button" class="blkoff" data-unblk="' + esc(b[0].id) + '">Separar todos</button>'
-              : "") +
-            "</div>" +
-            cards +
-            "</div>" +
-            after
-          );
-        })
-        .join("")
-    );
+    return blocksOf(entries)
+      .map(b => {
+        const cards = b.map(e => cardHTML(e, nx, b.length > 1 ? "in" : "")).join("");
+        if (b.length < 2) return cards;
+        const rounds = Math.max(0, ...b.map(e => doneArr(e).length));
+        return (
+          '<div class="blkbox"><div class="blkhead">' +
+          CHAIN +
+          "<span>Circuito " +
+          String.fromCharCode(65 + letter.n++) +
+          (rounds ? " · " + rounds + (rounds === 1 ? " ronda" : " rondas") : "") +
+          "</span>" +
+          '<button type="button" class="blkoff" data-unblk="' +
+          esc(b[0].id) +
+          '">Separar</button></div>' +
+          cards +
+          "</div>"
+        );
+      })
+      .join("");
   }
   // unir/separar: se guarda en cada ejercicio si va unido al siguiente (y se pasa del formato antiguo de circuito)
   async function toggleLink(id) {
