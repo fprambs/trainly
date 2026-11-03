@@ -260,6 +260,40 @@ test("buscador: ver la imagen en grande y elegirlo desde ahí", async ({ page })
   expect(errors).toEqual([]);
 });
 
+test("rutina desde cero: crear, agregar del banco, ajustar series y unir en circuito", async ({ page }) => {
+  const errors = await start(page);
+  await page.click("#t-rutinas");
+  await page.click("#rutNew");
+  const add = page.locator(".rutaddin");
+  await expect(add).toBeFocused();
+  await add.fill("lateral raise");
+  await page.locator(".rsugg [data-rpick]").first().click();
+  await expect(page.locator(".rutday[open] .rutex")).toHaveCount(1);
+  await expect(page.locator(".rutday[open] .rutex")).toContainText("Vuelo lateral");
+  await add.fill("goblet");
+  await add.press("Enter");
+  await expect(page.locator(".rutday[open] .rutex")).toHaveCount(2);
+  // ejercicio que no está en el banco
+  await add.fill("Sentadilla con banda");
+  await page.locator(".rsugg .rnewex").click();
+  await expect(page.locator(".rutday[open] .rutex")).toHaveCount(3);
+  // series/reps/kg en la misma fila
+  const reps = page.locator('.rutday[open] [data-rxf="reps"][data-ri="0"]');
+  await reps.fill("15");
+  await page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]').click();
+  await expect(page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]')).toBeFocused();
+  await page.keyboard.type("8");
+  await page.locator(".rutday[open] [data-rlink='0']").click();
+  await layoutOk(page);
+  await page.locator(".rutday[open] [data-redit]").click();
+  await expect(page.locator(".rutday[open] .rutex").first()).toContainText("15 reps");
+  await expect(page.locator(".rutday[open] .rutex").first()).toContainText("8");
+  await expect(page.locator(".rutday[open] .rutex.blk")).toHaveCount(2);
+  // cargarla en otro día queda con su circuito
+  await page.locator(".rutday[open] [data-rtpick]").click();
+  expect(errors).toEqual([]);
+});
+
 test("sin nombre muestra un mensaje propio", async ({ page }) => {
   await start(page);
   await page.click("#addOpen");

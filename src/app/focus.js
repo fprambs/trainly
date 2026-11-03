@@ -399,7 +399,7 @@ export function install(app) {
     if (!(
       document.activeElement &&
       document.activeElement.classList &&
-      document.activeElement.classList.contains("rutname")
+      (document.activeElement.classList.contains("rutname") || document.activeElement.classList.contains("rxin"))
     ))
       app.renderRoutinesTab();
     if (app.FS.open && !app.typingInPanel()) renderFocus();

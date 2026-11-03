@@ -64,7 +64,7 @@ export function install(app) {
       box.innerHTML =
         '<div class="empty rutempty">' +
         app.SAVEIC +
-        "<p><b>Aún no tienes rutinas guardadas.</b></p><p>Guarda un día de entrenamiento para repetirlo con un toque. Puedes hacerlo desde <b>Historial</b> (abre un día y toca “Guardar este día como rutina”) o desde la sesión con el botón <b>Rutinas</b>.</p></div>";
+        "<p><b>Aún no tienes rutinas guardadas.</b></p><p>Crea una con <b>Nueva rutina</b> y agrégale ejercicios del banco, o guarda un día que ya entrenaste: desde <b>Historial</b> (abre un día y toca “Guardar este día como rutina”) o con el botón <b>Rutina</b> en Hoy.</p></div>";
       return;
     }
     box.innerHTML = app.routines
@@ -90,12 +90,20 @@ export function install(app) {
                   "</span>") +
               "<div><b>" +
               esc(it.name) +
-              "</b><span>" +
-              esc(
-                (it.sets ? it.sets + (it.sets == 1 ? " serie" : " series") : "") +
-                  (app.planText(it) ? (it.sets ? " · " : "") + app.planText(it) : "")
-              ) +
-              "</span></div>" +
+              "</b>" +
+              (ed && it.mins == null && it.dist == null
+                ? '<span class="rxins">' +
+                  rxIn("sets", "Series", it.sets, ii, r.id) +
+                  rxIn("reps", "Reps", it.reps, ii, r.id) +
+                  rxIn("weight", app.perSide(it.name) ? "Kg c/u" : "Kg", it.weight, ii, r.id) +
+                  "</span>"
+                : "<span>" +
+                  esc(
+                    (it.sets ? it.sets + (it.sets == 1 ? " serie" : " series") : "") +
+                      (app.planText(it) ? (it.sets ? " · " : "") + app.planText(it) : "")
+                  ) +
+                  "</span>") +
+              "</div>" +
               (ed
                 ? '<button type="button" class="iconbtn" data-rxdel="' +
                   ii +
@@ -160,36 +168,176 @@ export function install(app) {
           (ed && its.length > 1
             ? '<p class="rutcirc">' +
               app.CHAIN +
-              "Toca «Unir» entre dos ejercicios para hacerlos en circuito: serie 1 de cada uno, luego serie 2…</p>"
+              "Toca el eslabón entre dos ejercicios para hacerlos en circuito: serie 1 de cada uno, luego serie 2…</p>"
             : "") +
           '<div class="rutexs">' +
           rows +
           "</div>" +
+          (ed
+            ? '<div class="rutadd"><input type="search" class="rutaddin" data-radd="' +
+              esc(r.id) +
+              '" placeholder="Agregar ejercicio: busca en el banco…" autocomplete="off" enterkeyhint="done" aria-label="Agregar ejercicio a la rutina"><ul class="sugg rsugg" hidden></ul></div>'
+            : !its.length
+              ? '<p class="hint">Sin ejercicios todavía: toca ✎ para agregarlos.</p>'
+              : "") +
           (ed
             ? '<div class="rutfoot"><button type="button" class="dangerbtn" data-rtdel="' +
               esc(r.id) +
               '">' +
               app.TRASH +
               " Borrar rutina</button></div>"
-            : '<div class="rutloads"><button type="button" class="primary rutload" data-rtload="' +
-              esc(r.id) +
-              '" data-rd="' +
-              app.today +
-              '">Cargar hoy</button><button type="button" class="btnlike" data-rtpick="' +
-              esc(r.id) +
-              '" aria-expanded="' +
-              (rutPick === r.id) +
-              '">Otra fecha ▾</button></div>' +
-              (rutPick === r.id ? rutPickHTML(r.id) : "")) +
+            : !its.length
+              ? ""
+              : '<div class="rutloads"><button type="button" class="primary rutload" data-rtload="' +
+                esc(r.id) +
+                '" data-rd="' +
+                app.today +
+                '">Cargar hoy</button><button type="button" class="btnlike" data-rtpick="' +
+                esc(r.id) +
+                '" aria-expanded="' +
+                (rutPick === r.id) +
+                '">Otra fecha ▾</button></div>' +
+                (rutPick === r.id ? rutPickHTML(r.id) : "")) +
           "</div></details>"
         );
       })
       .join("");
   }
+  // ---------- crear y armar una rutina desde cero ----------
+  const rxIn = (f, label, v, ii, rid) =>
+    "<label><small>" +
+    label +
+    '</small><input type="text" inputmode="decimal" class="rxin" data-rxf="' +
+    f +
+    '" data-ri="' +
+    ii +
+    '" data-rid="' +
+    esc(rid) +
+    '" value="' +
+    (v == null ? "" : String(v).replace(".", ",")) +
+    '" aria-label="' +
+    label +
+    '"></label>';
+  const numOrNull = v => {
+    v = String(v ?? "")
+      .trim()
+      .replace(",", ".");
+    if (v === "") return null;
+    const n = Number(v);
+    return isFinite(n) && n >= 0 ? n : null;
+  };
+  async function updateItems(rid, fn, refocus) {
+    const i = app.routines.findIndex(r => r.id === rid);
+    if (i < 0) return;
+    if (app.routines[i].own === false) {
+      app.toast("Esa rutina es de tu profesor: no la puedes modificar.");
+      return;
+    }
+    const l = app.routines.slice();
+    l[i] = Object.assign({}, l[i], { items: fn(routineItems(l[i]).slice()), circuit: false });
+    await app.store.setRoutines(l);
+    if (refocus) {
+      const inp = document.querySelector('[data-radd="' + CSS.escape(rid) + '"]');
+      if (inp) inp.focus({ preventScroll: true });
+    }
+  }
+  $("rutNew").addEventListener("click", async () => {
+    const id = crypto.randomUUID(),
+      r = { id, name: nextRoutineName(), items: [], circuit: false, own: true };
+    rutEdit = id;
+    openRuts.add(id);
+    await app.store.setRoutines(app.routines.concat([r]));
+    renderRoutinesTab();
+    setTimeout(() => {
+      const el = document.querySelector('[data-rut="' + id + '"]');
+      if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+      const inp = document.querySelector('[data-radd="' + id + '"]');
+      if (inp) inp.focus({ preventScroll: true });
+    }, 60);
+  });
+  function rutSuggest(inp) {
+    const ul = inp.nextElementSibling,
+      q = norm(inp.value),
+      words = q ? q.split(" ") : [];
+    if (!q) {
+      ul.hidden = true;
+      ul.innerHTML = "";
+      return;
+    }
+    const hits = app.catalog
+      .map(n => ({ n, by: app.matchName(n, words) }))
+      .filter(o => o.by)
+      .slice(0, 8);
+    const exact = hits.some(o => norm(o.n) === q);
+    ul.innerHTML =
+      hits
+        .map(o => {
+          const im = app.imgOf(o.n);
+          return (
+            '<li><button type="button" data-rpick="' +
+            esc(o.n) +
+            '" data-rid="' +
+            esc(inp.dataset.radd) +
+            '">' +
+            (im ? app.mediaHTML(im, "sthumb") : '<span class="sthumb"></span>') +
+            "<span>" +
+            esc(o.n) +
+            (o.by === "en" ? '<em class="sen" lang="en">' + esc(app.nameEn(o.n)) + "</em>" : "") +
+            "</span></button></li>"
+          );
+        })
+        .join("") +
+      (exact
+        ? ""
+        : '<li><button type="button" class="rnewex" data-rpick="' +
+          esc(inp.value.trim()) +
+          '" data-rid="' +
+          esc(inp.dataset.radd) +
+          '">＋ Agregar «' +
+          esc(inp.value.trim()) +
+          "» como ejercicio nuevo</button></li>");
+    ul.hidden = false;
+  }
+  const addItem = (rid, name) =>
+    updateItems(
+      rid,
+      items => items.concat([{ name: app.canonical(name), sets: 3, reps: 10, weight: null, mins: null, dist: null }]),
+      true
+    ).then(() => app.toast("Agregado a la rutina: " + app.canonical(name)));
+  $("rutList").addEventListener("input", e => {
+    if (e.target.matches(".rutaddin")) rutSuggest(e.target);
+  });
+  $("rutList").addEventListener("keydown", e => {
+    if (!e.target.matches(".rutaddin") || e.key !== "Enter") return;
+    e.preventDefault();
+    const first = e.target.nextElementSibling.querySelector("[data-rpick]");
+    if (first && e.target.value.trim()) addItem(e.target.dataset.radd, first.dataset.rpick);
+  });
+  $("rutList").addEventListener("change", e => {
+    const f = e.target.dataset && e.target.dataset.rxf;
+    if (!f) return;
+    const k = +e.target.dataset.ri,
+      rid = e.target.dataset.rid,
+      v = numOrNull(e.target.value);
+    // se guarda cuando el foco ya pasó al campo siguiente (mientras se escribe en uno, la lista no se redibuja)
+    setTimeout(() => {
+      updateItems(rid, items => {
+        items[k] = Object.assign({}, items[k], { [f]: f === "sets" && v != null ? Math.round(v) : v });
+        return items;
+      });
+    }, 0);
+  });
+  $("rutList").addEventListener("mousedown", e => {
+    if (e.target.closest("[data-rpick]")) e.preventDefault();
+  });
   $("rutList").addEventListener("click", async e => {
     const b = e.target.closest("button");
     if (!b) return;
     const find = id => app.routines.findIndex(r => r.id === id);
+    if (b.dataset.rpick != null) {
+      if (b.dataset.rpick) await addItem(b.dataset.rid, b.dataset.rpick);
+      return;
+    }
     if (b.dataset.redit) {
       const id = b.dataset.redit;
       if (rutEdit === id) {

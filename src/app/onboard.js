@@ -42,9 +42,11 @@ export function install(app) {
       {
         ok: own.length > 0,
         t: "Crea tu primera rutina",
-        d: "Guarda lo que hiciste hoy como rutina: la próxima vez la cargas con un toque, hoy o en la fecha que quieras.",
+        d: today.length
+          ? "Guarda lo que hiciste hoy como rutina: la próxima vez la cargas con un toque, hoy o en la fecha que quieras."
+          : "Ármala desde cero con ejercicios del banco y cárgala con un toque, hoy o en la fecha que quieras.",
         act: today.length ? "save" : "ruts",
-        btn: today.length ? "Crear rutina" : "Ver rutinas"
+        btn: today.length ? "Crear rutina" : "Nueva rutina"
       },
       {
         ok: own.some(r => routineItems(r).some(it => it.link)) || mine.some(e => e.link),
@@ -114,8 +116,10 @@ export function install(app) {
     else if (a === "go") {
       const nx = app.findNext(app.entries.filter(e => e.date === app.today));
       if (nx) app.openFocus(true);
-    } else if (a === "ruts") app.showTab("rutinas");
-    else if (a === "rutedit") {
+    } else if (a === "ruts") {
+      app.showTab("rutinas");
+      $("rutNew").click();
+    } else if (a === "rutedit") {
       const r = app.routines.find(x => x.own);
       if (r) app.editRoutine(r.id);
     } else if (a === "save") {
