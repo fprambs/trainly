@@ -299,6 +299,9 @@ test("rutina desde cero: crear, agregar del banco, ajustar series y unir en circ
   await page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]').click();
   await expect(page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]')).toBeFocused();
   await page.keyboard.type("8");
+  // cerrar el panel tocando el ejercicio (guarda lo escrito)
+  await page.locator('.rutday[open] .rutex[data-ri="0"] .tinfo').click();
+  await expect(page.locator(".rutday[open] .rxpanel")).toHaveCount(0);
   const rows = page.locator(".rutday[open] .rutex[data-ri]");
   await dragCard(page, rows.nth(1).locator("b"), rows.nth(0));
   await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
@@ -310,6 +313,25 @@ test("rutina desde cero: crear, agregar del banco, ajustar series y unir en circ
   // cargarla en otro día queda con su circuito
   await page.locator(".rutday[open] [data-rtpick]").click();
   expect(errors).toEqual([]);
+});
+
+test("editar un ejercicio: botón para buscar la imagen en Google", async ({ page }) => {
+  await start(page);
+  // detalle de Hoy → Editar
+  await page.locator("#todayList .tcard").first().click();
+  await page.locator("#exDet .edt").click();
+  const g = page.locator('#exDet .imgtools a[href*="google.com/search"]');
+  await expect(g).toBeVisible();
+  await expect(g).toHaveAttribute("target", "_blank");
+  await expect(g).toHaveAttribute("href", /Peso%20muerto/);
+  await layoutOk(page);
+  await page.keyboard.press("Escape");
+  // editor de rutinas → tocar un ejercicio
+  await page.click("#t-rutinas");
+  await page.locator(".rutday summary").first().click();
+  await page.locator("[data-redit]").first().click();
+  await page.locator('.rutday[open] .rutex[data-ri="0"] .tinfo').click();
+  await expect(page.locator('.rutday[open] .rxpanel a[href*="google.com/search"]')).toBeVisible();
 });
 
 test("sin nombre muestra un mensaje propio", async ({ page }) => {

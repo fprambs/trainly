@@ -407,6 +407,32 @@ export function install(app) {
     pendingName = n;
     $("fileIn").click();
   }
+  app.pickFile = pickFile;
+  // botones de imagen para las ediciones (detalle de Hoy y editor de rutinas): buscar en Google y, si se puede, subirla
+  app.imgToolsHTML = n => {
+    const bank = app.originOf(n) === "comun",
+      r = app.imgOf(n);
+    return (
+      '<div class="imgtools"><a class="btnlike" href="' +
+      esc(app.searchURL(n)) +
+      '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Buscar imagen en Google</a>' +
+      (app.assets && !bank
+        ? '<button type="button" class="btnlike solid" data-imgup="' +
+          esc(n) +
+          '">' +
+          (r ? "Cambiar imagen" : "Subir imagen") +
+          "</button>"
+        : "") +
+      "</div>" +
+      (app.assets && !bank && !r
+        ? '<p class="hint">Mantén presionada la imagen que te guste para guardarla y luego súbela aquí.</p>'
+        : "")
+    );
+  };
+  document.addEventListener("click", e => {
+    const b = e.target.closest("[data-imgup]");
+    if (b) pickFile(b.dataset.imgup);
+  });
   $("exUpload").addEventListener("click", () => pickFile($("excard").dataset.name));
   $("fileIn").addEventListener("change", async e => {
     const f = e.target.files && e.target.files[0];

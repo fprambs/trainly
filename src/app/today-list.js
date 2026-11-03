@@ -308,6 +308,7 @@ export function install(app) {
       esc(V("memo", e.memo || "")) +
       '"></div>' +
       "</div>" +
+      app.imgToolsHTML(e.name) +
       '<div class="eebar"><button type="button" class="del dangerbtn" data-id="' +
       esc(e.id) +
       '">' +

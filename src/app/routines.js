@@ -111,6 +111,7 @@ export function install(app) {
                     rxIn("weight", app.perSide(it.name) ? "Kg c/u" : "Kg", it.weight, ii, r.id) +
                     "</div>"
                   : "") +
+                app.imgToolsHTML(it.name) +
                 '<button type="button" class="dangerbtn rxdel" data-rxdel="' +
                 ii +
                 '" data-rid="' +
