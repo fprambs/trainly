@@ -48,13 +48,15 @@ export function install(app) {
     ];
   }
 
+  let shown = false;
   app.renderOnboard = () => {
     const box = $("obBox");
     if (!box) return;
     const st = steps(),
       n = st.filter(s => s.ok).length;
-    if (env.isCoach() || hidden() || n === st.length) {
-      if (n === st.length && !hidden() && box.innerHTML) {
+    // hasta que lleguen los datos no se sabe qué pasos ya hizo
+    if (!app.entLoaded || env.isCoach() || hidden() || n === st.length) {
+      if (app.entLoaded && n === st.length && shown && !hidden()) {
         hide();
         app.toast("¡Listo! Ya sabes lo básico de Trainly 💪");
       }
@@ -62,6 +64,7 @@ export function install(app) {
       box.innerHTML = "";
       return;
     }
+    shown = true;
     const cur = st.findIndex(s => !s.ok);
     box.hidden = false;
     box.innerHTML =
