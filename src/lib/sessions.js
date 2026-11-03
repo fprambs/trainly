@@ -65,3 +65,27 @@ export const routineItems = r =>
   (r.items || []).map((it, i, a) =>
     r.circuit && !("link" in it) ? Object.assign({}, it, { link: i < a.length - 1 }) : it
   );
+
+// Mover un elemento en una lista con uniones ({ link }): i = posición actual, t = destino (en la lista sin él).
+// join: soltado sobre el centro del destino (queda unido a él, justo después); inBlk: soltado dentro de la tarjeta
+// de un circuito (antes o después del destino, dentro del circuito); si no, queda suelto entre sus vecinos.
+export function relink(list, i, t, { join = false, after = false, inBlk = false } = {}) {
+  const arr = list.map(o => Object.assign({}, o));
+  if (i > 0) arr[i - 1].link = arr[i - 1].link && arr[i].link;
+  const mine = arr.splice(i, 1)[0];
+  if (inBlk && !after && !join) {
+    mine.link = true;
+    arr.splice(t, 0, mine);
+  } else if (join || inBlk) {
+    mine.link = arr[t].link;
+    arr[t].link = true;
+    arr.splice(t + 1, 0, mine);
+  } else {
+    const p = t + (after ? 1 : 0),
+      prev = arr[p - 1];
+    mine.link = !!(prev && prev.link);
+    arr.splice(p, 0, mine);
+  }
+  arr[arr.length - 1].link = false;
+  return arr;
+}

@@ -165,19 +165,6 @@ export function install(app) {
   const CHAIN =
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/></svg>';
   app.CHAIN = CHAIN;
-  const linkBtn = (attr, on) =>
-    '<button type="button" class="tlink' +
-    (on ? " on" : "") +
-    '" ' +
-    attr +
-    ' aria-pressed="' +
-    on +
-    '" aria-label="' +
-    (on ? "Separar estos dos ejercicios" : "Unir estos dos ejercicios en circuito") +
-    '">' +
-    CHAIN +
-    "</button>";
-  app.linkBtn = linkBtn;
   // cada circuito va dentro de su propia tarjeta. Para armarlos: mantener presionado un ejercicio y soltarlo
   // sobre otro (ver today-list.js); arrastrarlo fuera de la tarjeta lo saca del circuito.
   function listHTML(entries, nx, letter) {
@@ -201,22 +188,6 @@ export function install(app) {
         );
       })
       .join("");
-  }
-  // unir/separar: se guarda en cada ejercicio si va unido al siguiente (y se pasa del formato antiguo de circuito)
-  async function toggleLink(id) {
-    const e = app.entries.find(x => x.id === id);
-    if (!e) return;
-    const day = app.entries.filter(x => x.date === e.date).sort(byCreated),
-      i = day.indexOf(e);
-    if (i < 0 || i === day.length - 1) return;
-    const want = day.map((x, k) => (k === i ? !linkedTo(e, day[i + 1]) : linkedTo(x, day[k + 1])));
-    for (let k = 0; k < day.length; k++) {
-      const x = day[k],
-        patch = {};
-      if (!!x.link !== want[k]) patch.link = want[k];
-      if (x.circuit) patch.circuit = false;
-      if (Object.keys(patch).length) await app.store.update(x.id, patch);
-    }
   }
   // separar todo el circuito que empieza en este ejercicio
   async function unblock(id) {
@@ -254,12 +225,6 @@ export function install(app) {
     if (ub) {
       ev.stopPropagation();
       unblock(ub.dataset.unblk);
-      return;
-    }
-    const lk = ev.target.closest("[data-link]");
-    if (lk) {
-      ev.stopPropagation();
-      toggleLink(lk.dataset.link);
       return;
     }
     const g = ev.target.closest("[data-go]");

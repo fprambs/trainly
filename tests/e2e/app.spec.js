@@ -189,11 +189,22 @@ test("rutina: unir ejercicios en el editor y cargarla con el circuito", async ({
   await page.click("#t-rutinas");
   await page.locator(".rutday summary").first().click();
   await page.locator("[data-redit]").first().click();
-  await page.locator("[data-rlink='0']").click();
-  await expect(page.locator("[data-rlink='0']")).toHaveAttribute("aria-pressed", "true");
-  await page.locator("[data-redit]").first().click();
-  await expect(page.locator(".rutex.blk")).toHaveCount(2);
+  const rows = page.locator(".rutday[open] .rutex[data-ri]");
+  const second = (await rows.nth(1).locator("b").textContent()).trim();
+  // mantener presionado el segundo y soltarlo sobre el primero: circuito
+  await dragCard(page, rows.nth(1).locator("b"), rows.nth(0));
+  await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
+  // moverlo al primer lugar dentro del circuito
+  await dragCard(page, rows.nth(1).locator("b"), rows.nth(0), "top");
+  await expect(page.locator(".rutday[open] .blkbox .rutex").first()).toContainText(second);
+  await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
   await layoutOk(page);
+  // separar
+  await page.click(".rutday[open] [data-rsep]");
+  await expect(page.locator(".rutday[open] .blkbox")).toHaveCount(0);
+  await dragCard(page, rows.nth(1).locator("b"), rows.nth(0));
+  await page.locator("[data-redit]").first().click();
+  await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
 });
 
 test("guía para empezar: aparece en una cuenta nueva y avanza sola", async ({ page }) => {
@@ -225,7 +236,9 @@ test("guía para empezar: lleva a armar un circuito en la rutina", async ({ page
   await expect(ob).toContainText("3 de 4");
   await ob.locator("[data-ob=rutedit]").click();
   await expect(page.locator("#tab-rutinas")).toBeVisible();
-  await page.locator("[data-rlink='0']").click();
+  const rows = page.locator(".rutday[open] .rutex[data-ri]");
+  await dragCard(page, rows.nth(1).locator("b"), rows.nth(0));
+  await expect(page.locator(".rutday[open] .blkbox")).toHaveCount(1);
   await page.click("#t-anotar");
   await expect(ob).toBeHidden();
 });
@@ -283,12 +296,14 @@ test("rutina desde cero: crear, agregar del banco, ajustar series y unir en circ
   await page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]').click();
   await expect(page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]')).toBeFocused();
   await page.keyboard.type("8");
-  await page.locator(".rutday[open] [data-rlink='0']").click();
+  const rows = page.locator(".rutday[open] .rutex[data-ri]");
+  await dragCard(page, rows.nth(1).locator("b"), rows.nth(0));
+  await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
   await layoutOk(page);
   await page.locator(".rutday[open] [data-redit]").click();
   await expect(page.locator(".rutday[open] .rutex").first()).toContainText("15 reps");
   await expect(page.locator(".rutday[open] .rutex").first()).toContainText("8");
-  await expect(page.locator(".rutday[open] .rutex.blk")).toHaveCount(2);
+  await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
   // cargarla en otro día queda con su circuito
   await page.locator(".rutday[open] [data-rtpick]").click();
   expect(errors).toEqual([]);

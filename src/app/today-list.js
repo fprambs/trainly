@@ -1,6 +1,6 @@
 // Hoy: dibujar la lista y reordenar arrastrando.
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { ordOf, doneArr, byCreated, linkedTo } from "../lib/sessions.js";
+import { ordOf, doneArr, byCreated, linkedTo, relink } from "../lib/sessions.js";
 import { esc, fmtN, fmtTime, fmtDist } from "../lib/format.js";
 
 export function install(app) {
@@ -57,11 +57,11 @@ export function install(app) {
   const HOLD = 450;
   document.addEventListener("pointerdown", ev => {
     if (ev.pointerType === "mouse" && ev.button !== 0) return;
-    const el = ev.target.closest(".entry[data-id]");
+    const el = ev.target.closest(".entry[data-id], .rutex[data-ri]");
     if (!el) return;
     if (ev.target.closest("button,input,textarea,a,select,.mini,.sets,.eedit,.seted")) return;
     // en Hoy la lista completa (los circuitos van en sub-tarjetas); en otras listas, los hermanos
-    const box = el.closest("#todayList") || el.parentElement;
+    const box = el.closest("#todayList") || el.closest(".rutexs") || el.parentElement;
     cancelPress();
     press = {
       el,
@@ -73,10 +73,31 @@ export function install(app) {
         if (!press) return;
         const p = press;
         press = null;
+        // si la lista se redibujó mientras se mantenía presionado (p. ej. al guardar un campo), se toma el nuevo
+        if (!p.el.isConnected) {
+          const rb = p.box.dataset && p.box.dataset.rid;
+          const el = p.el.dataset.id
+            ? document.querySelector('.entry[data-id="' + CSS.escape(p.el.dataset.id) + '"]')
+            : rb &&
+              document.querySelector(
+                '.rutexs[data-rid="' + CSS.escape(rb) + '"] .rutex[data-ri="' + p.el.dataset.ri + '"]'
+              );
+          if (!el) return;
+          p.el = el;
+          p.box = el.closest("#todayList") || el.closest(".rutexs") || el.parentElement;
+        }
         try {
           p.el.setPointerCapture(p.pid);
         } catch (e) {}
-        app.drag = { el: p.el, box: p.box, id: p.el.dataset.id, y0: p.y0, target: null, after: false, moved: false };
+        app.drag = {
+          el: p.el,
+          box: p.box,
+          id: p.el.dataset.id || p.el.dataset.ri,
+          y0: p.y0,
+          target: null,
+          after: false,
+          moved: false
+        };
         p.el.classList.remove("pressing");
         p.el.classList.add("dragging");
         document.body.classList.add("is-dragging");
@@ -114,10 +135,11 @@ export function install(app) {
     app.drag.el.style.transform = "translateY(" + dy + "px)";
     if (ev.clientY < 90) window.scrollBy(0, -12);
     else if (ev.clientY > window.innerHeight - 170) window.scrollBy(0, 12);
-    const today = app.drag.box.id === "todayList";
-    const items = [...app.drag.box.querySelectorAll(today ? ".entry[data-id]" : ":scope > .entry[data-id]")].filter(
-      x => x !== app.drag.el
-    );
+    const rut = app.drag.box.classList.contains("rutexs"),
+      today = app.drag.box.id === "todayList" || rut;
+    const items = [
+      ...app.drag.box.querySelectorAll(rut ? ".rutex[data-ri]" : today ? ".entry[data-id]" : ":scope > .entry[data-id]")
+    ].filter(x => x !== app.drag.el);
     app.drag.box
       .querySelectorAll(".drop-before,.drop-after,.drop-join")
       .forEach(x => x.classList.remove("drop-before", "drop-after", "drop-join"));
@@ -175,6 +197,11 @@ export function install(app) {
       .forEach(x => x.classList.remove("drop-before", "drop-after", "drop-join"));
     if (d.moved) app.lastDragEnd = Date.now();
     if (!d.moved || !d.target || !d.el.isConnected) return;
+    if (d.box.classList.contains("rutexs")) {
+      // rutina en edición: la reordena y arma los circuitos routines.js
+      app.routineDrop(d.box.dataset.rid, +d.id, +d.target.dataset.ri, d);
+      return;
+    }
     const today = d.box.id === "todayList";
     const before = today ? circuitsOf(d) : null;
     // nuevo orden: entre los vecinos del punto donde lo soltaste
@@ -212,27 +239,11 @@ export function install(app) {
     const me = app.entries.find(x => x.id === d.id);
     if (!me) return null;
     const day = app.entries.filter(x => x.date === me.date).sort(byCreated);
-    const arr = day.map((x, k) => ({ e: x, link: linkedTo(x, day[k + 1]) }));
-    const i = arr.findIndex(x => x.e === me);
-    if (i > 0) arr[i - 1].link = arr[i - 1].link && arr[i].link;
-    const mine = arr.splice(i, 1)[0];
-    const t = arr.findIndex(x => x.e.id === d.target.dataset.id);
+    const all = day.map((x, k) => ({ e: x, link: linkedTo(x, day[k + 1]) }));
+    const i = all.findIndex(x => x.e === me),
+      t = all.filter(x => x.e !== me).findIndex(x => x.e.id === d.target.dataset.id);
     if (t < 0) return null;
-    if (d.inBlk && !d.after) {
-      // primero (o entre dos) dentro del circuito: queda unido al de abajo
-      mine.link = true;
-      arr.splice(t, 0, mine);
-    } else if (d.join || d.inBlk) {
-      mine.link = arr[t].link;
-      arr[t].link = true;
-      arr.splice(t + 1, 0, mine);
-    } else {
-      const p = t + (d.after ? 1 : 0),
-        prev = arr[p - 1];
-      mine.link = !!(prev && prev.link);
-      arr.splice(p, 0, mine);
-    }
-    arr[arr.length - 1].link = false;
+    const arr = relink(all, i, t, d);
     return { arr, name: me.name, with: d.join ? arr.find(x => x.e.id === d.target.dataset.id).e.name : null };
   }
   async function saveCircuits(c, d) {

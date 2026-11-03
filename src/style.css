@@ -7639,3 +7639,73 @@ body.drag-join .tcard.dragging {
   color: var(--accent);
   font-weight: 600;
 }
+
+/* editor de rutinas: arrastrar para mover o unir en circuito */
+.rutex[data-ri] {
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.rutex.pressing {
+  transform: scale(0.985);
+  background: var(--surface2);
+  transition:
+    transform 0.45s ease,
+    background 0.45s ease;
+  border-radius: 10px;
+}
+.rutex.dragging {
+  position: relative;
+  z-index: 6;
+  background: var(--surface);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22);
+  border-radius: 10px;
+  scale: 0.96;
+  opacity: 0.96;
+}
+body.drag-join .rutex.dragging {
+  opacity: 0.55;
+}
+.rutex.drop-before {
+  box-shadow: inset 0 3px 0 var(--accent);
+}
+.rutex.drop-after {
+  box-shadow: inset 0 -3px 0 var(--accent);
+}
+.rutex.drop-join {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--soft);
+  border-radius: 10px;
+}
+.rutexs .blkbox {
+  margin: 8px 0;
+}
+.rutexs .blkbox .rutex {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+body[data-tab="rutinas"].is-dragging::after {
+  content: "Suelta entre dos para moverlo · sobre otro para unirlos en circuito";
+  position: fixed;
+  left: 50%;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  z-index: 50;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  pointer-events: none;
+}
+body[data-tab="rutinas"].is-dragging.drag-join::after {
+  content: "Suelta para unirlos en circuito";
+  background: var(--accent);
+  color: var(--accent-ink);
+}

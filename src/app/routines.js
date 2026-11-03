@@ -1,6 +1,6 @@
 // Rutinas: guardar, cargar y editar.
 // Comparte el estado de la app a través del objeto `app` (ver src/app.js).
-import { byCreated, splitSessions, sessLabel, linkedTo, routineItems } from "../lib/sessions.js";
+import { byCreated, splitSessions, sessLabel, linkedTo, routineItems, blocksOf, relink } from "../lib/sessions.js";
 import { CATMAP } from "../lib/categories.js";
 import { iso, parse, fmtDay, esc, norm } from "../lib/format.js";
 
@@ -71,54 +71,73 @@ export function install(app) {
       .map((r, ri) => {
         const ed = rutEdit === r.id,
           its = routineItems(r);
-        const rows = its
-          .map((it, ii) => {
-            const im = app.imgOf(it.name),
-              cat = CATMAP[app.catOf(it.name)];
-            const inBlk = it.link || (ii > 0 && its[ii - 1].link);
+        const row = (it, ii) => {
+          const im = app.imgOf(it.name),
+            cat = CATMAP[app.catOf(it.name)];
+          return (
+            '<div class="rutex"' +
+            (ed ? ' data-ri="' + ii + '"' : "") +
+            ">" +
+            (im
+              ? app.mediaHTML(im, "mini")
+              : '<span class="rletter" style="border-color:' +
+                cat[2] +
+                '">' +
+                esc(it.name.charAt(0).toUpperCase()) +
+                "</span>") +
+            "<div><b>" +
+            esc(it.name) +
+            "</b>" +
+            (ed && it.mins == null && it.dist == null
+              ? '<span class="rxins">' +
+                rxIn("sets", "Series", it.sets, ii, r.id) +
+                rxIn("reps", "Reps", it.reps, ii, r.id) +
+                rxIn("weight", app.perSide(it.name) ? "Kg c/u" : "Kg", it.weight, ii, r.id) +
+                "</span>"
+              : "<span>" +
+                esc(
+                  (it.sets ? it.sets + (it.sets == 1 ? " serie" : " series") : "") +
+                    (app.planText(it) ? (it.sets ? " · " : "") + app.planText(it) : "")
+                ) +
+                "</span>") +
+            "</div>" +
+            (ed
+              ? '<button type="button" class="iconbtn" data-rxdel="' +
+                ii +
+                '" data-rid="' +
+                esc(r.id) +
+                '" aria-label="Quitar ' +
+                esc(it.name) +
+                ' de la rutina">✕</button>'
+              : "") +
+            "</div>"
+          );
+        };
+        // los circuitos van en su propia sub-tarjeta, igual que en Hoy
+        let letter = 0,
+          at = 0;
+        const rows = blocksOf(its)
+          .map(b => {
+            const start = at;
+            at += b.length;
+            const html = b.map((it, k) => row(it, start + k)).join("");
+            if (b.length < 2) return html;
             return (
-              '<div class="rutex' +
-              (inBlk ? " blk" : "") +
-              (it.link && !(ii > 0 && its[ii - 1].link) ? " blkstart" : "") +
-              '">' +
-              (im
-                ? app.mediaHTML(im, "mini")
-                : '<span class="rletter" style="border-color:' +
-                  cat[2] +
-                  '">' +
-                  esc(it.name.charAt(0).toUpperCase()) +
-                  "</span>") +
-              "<div><b>" +
-              esc(it.name) +
-              "</b>" +
-              (ed && it.mins == null && it.dist == null
-                ? '<span class="rxins">' +
-                  rxIn("sets", "Series", it.sets, ii, r.id) +
-                  rxIn("reps", "Reps", it.reps, ii, r.id) +
-                  rxIn("weight", app.perSide(it.name) ? "Kg c/u" : "Kg", it.weight, ii, r.id) +
-                  "</span>"
-                : "<span>" +
-                  esc(
-                    (it.sets ? it.sets + (it.sets == 1 ? " serie" : " series") : "") +
-                      (app.planText(it) ? (it.sets ? " · " : "") + app.planText(it) : "")
-                  ) +
-                  "</span>") +
-              "</div>" +
+              '<div class="blkbox"><div class="blkhead">' +
+              app.CHAIN +
+              "<span>Circuito " +
+              String.fromCharCode(65 + letter++) +
+              "</span>" +
               (ed
-                ? '<button type="button" class="iconbtn" data-rxdel="' +
-                  ii +
+                ? '<button type="button" class="blkoff" data-rsep="' +
+                  start +
                   '" data-rid="' +
                   esc(r.id) +
-                  '" aria-label="Quitar ' +
-                  esc(it.name) +
-                  ' de la rutina">✕</button>'
+                  '">Separar</button>'
                 : "") +
               "</div>" +
-              (ii < its.length - 1
-                ? ed
-                  ? app.linkBtn('data-rlink="' + ii + '" data-rid="' + esc(r.id) + '"', !!it.link)
-                  : ""
-                : "")
+              html +
+              "</div>"
             );
           })
           .join("");
@@ -168,9 +187,11 @@ export function install(app) {
           (ed && its.length > 1
             ? '<p class="rutcirc">' +
               app.CHAIN +
-              "Toca el eslabón entre dos ejercicios para hacerlos en circuito: serie 1 de cada uno, luego serie 2…</p>"
+              "Mantén presionado un ejercicio y suéltalo sobre otro para hacerlos en circuito (serie 1 de cada uno, luego serie 2…); suéltalo entre dos para moverlo.</p>"
             : "") +
-          '<div class="rutexs">' +
+          '<div class="rutexs" data-rid="' +
+          esc(r.id) +
+          '">' +
           rows +
           "</div>" +
           (ed
@@ -241,6 +262,19 @@ export function install(app) {
       if (inp) inp.focus({ preventScroll: true });
     }
   }
+  // soltar un ejercicio arrastrado en el editor (today-list.js maneja el gesto)
+  app.routineDrop = (rid, i, target, d) => {
+    if (i === target) return;
+    // si había un campo en edición, primero se guarda (y se deja de bloquear el redibujo)
+    const a = document.activeElement;
+    if (a && a.classList && a.classList.contains("rxin")) a.blur();
+    setTimeout(() =>
+      updateItems(rid, items => {
+        const t = target > i ? target - 1 : target;
+        return relink(items, i, t, d);
+      })
+    );
+  };
   $("rutNew").addEventListener("click", async () => {
     const id = crypto.randomUUID(),
       r = { id, name: nextRoutineName(), items: [], circuit: false, own: true };
@@ -355,14 +389,12 @@ export function install(app) {
       renderRoutinesTab();
       return;
     }
-    if (b.dataset.rlink != null) {
-      const i = find(b.dataset.rid);
-      if (i < 0) return;
-      const l = app.routines.slice(),
-        k = +b.dataset.rlink,
-        items = routineItems(l[i]).map((it, j) => (j === k ? Object.assign({}, it, { link: !it.link }) : it));
-      l[i] = Object.assign({}, l[i], { items, circuit: false });
-      await app.store.setRoutines(l);
+    if (b.dataset.rsep != null) {
+      const k = +b.dataset.rsep;
+      await updateItems(b.dataset.rid, items => {
+        const blk = blocksOf(items).find(x => x.includes(items[k])) || [];
+        return items.map(it => (blk.includes(it) ? Object.assign({}, it, { link: false }) : it));
+      });
       return;
     }
     if (b.dataset.rxdel != null) {
