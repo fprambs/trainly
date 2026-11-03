@@ -162,7 +162,15 @@ export function install(app) {
               : highlight(o.n, q)) +
             "</span><small>" +
             (o.saved ? app.originTag(o.n) || "Guardado" : "Usado antes") +
-            "</small></li>"
+            "</small>" +
+            (r
+              ? '<button type="button" class="szoom" data-zoom="' +
+                i +
+                '" aria-label="Ver ' +
+                esc(o.n) +
+                ' en grande"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5M11 8.5v5M8.5 11h5"/></svg></button>'
+              : "") +
+            "</li>"
           );
         })
         .join("");
@@ -252,7 +260,7 @@ export function install(app) {
     setAddOpen(false);
   });
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && !$("addCard").hidden && list.hidden) setAddOpen(false);
+    if (e.key === "Escape" && !$("addCard").hidden && list.hidden && $("lb").hidden) setAddOpen(false);
   });
   $("emptyAdd").addEventListener("click", () => setAddOpen(true, true));
   $("emptyRut").addEventListener("click", () => $("repeatBtn").click());
@@ -311,7 +319,9 @@ export function install(app) {
     }
   });
   app.nameIn.addEventListener("focus", openSugg);
-  app.nameIn.addEventListener("blur", () => setTimeout(closeSugg, 150));
+  app.nameIn.addEventListener("blur", () =>
+    setTimeout(() => document.activeElement !== app.nameIn && closeSugg(), 150)
+  );
   app.nameIn.addEventListener("keydown", e => {
     if (list.hidden) return;
     if (e.key === "ArrowDown") {
@@ -329,6 +339,14 @@ export function install(app) {
   });
   list.addEventListener("mousedown", e => e.preventDefault());
   list.addEventListener("click", e => {
+    // lupa: ver la imagen en grande antes de elegirlo
+    const z = e.target.closest("[data-zoom]");
+    if (z) {
+      e.stopPropagation();
+      const o = sugg[+z.dataset.zoom];
+      if (o) openLB(o.n, () => choose(+z.dataset.zoom));
+      return;
+    }
     const li = e.target.closest("li[data-i]");
     if (li) choose(+li.dataset.i);
   });
@@ -529,18 +547,34 @@ export function install(app) {
       await uploadFor($("excard").dataset.name, f);
     }
   });
-  function openLB(n) {
+  let lbPick = null;
+  function openLB(n, pick) {
     const r = app.imgOf(n);
     if (!r) return;
+    lbPick = pick || null;
     $("lbName").textContent = n;
     $("lbBody").innerHTML = mediaBig(r);
+    $("lbPick").hidden = !lbPick;
     $("lb").hidden = false;
-    $("lbClose").focus();
+    (lbPick ? $("lbPick") : $("lbClose")).focus();
   }
   const closeLB = () => {
+    const fromSugg = !!lbPick;
     $("lb").hidden = true;
     $("lbBody").innerHTML = "";
+    lbPick = null;
+    // vuelta al buscador con la lista abierta, para seguir mirando opciones
+    if (fromSugg && !$("addCard").hidden) {
+      app.nameIn.focus();
+      openSugg();
+    }
   };
+  $("lbPick").addEventListener("click", () => {
+    const f = lbPick;
+    lbPick = null;
+    closeLB();
+    if (f) f();
+  });
   $("lbClose").addEventListener("click", closeLB);
   $("lb").addEventListener("click", e => {
     if (e.target.id === "lb") closeLB();

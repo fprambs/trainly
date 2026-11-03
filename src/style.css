@@ -7511,3 +7511,35 @@ body.drag-join .tcard.dragging {
 .obsteps .btnlike {
   flex: none;
 }
+
+/* lupa en el buscador: ver la imagen en grande antes de elegir */
+.sugg .szoom {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface2);
+  color: var(--ink);
+  cursor: pointer;
+}
+.sugg .szoom svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.lbacts {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.lb #lbPick {
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}

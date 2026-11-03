@@ -230,6 +230,36 @@ test("guía para empezar: lleva a armar un circuito en la rutina", async ({ page
   await expect(ob).toBeHidden();
 });
 
+test("buscador: ver la imagen en grande y elegirlo desde ahí", async ({ page }) => {
+  const errors = await start(page);
+  await page.click("#addOpen");
+  await page.fill("#name", "goblet");
+  const op = page.locator("#sugg li[role=option]").first();
+  await op.locator(".szoom").click();
+  await expect(page.locator("#lb")).toBeVisible();
+  await expect(page.locator("#lbName")).toHaveText("Sentadilla goblet");
+  await expect(page.locator("#lbBody img, #lbBody video")).toHaveCount(1);
+  // la ventana de agregar sigue abierta detrás y el campo no cambió
+  await expect(page.locator("#name")).toHaveValue("goblet");
+  await layoutOk(page);
+  await page.click("#lbPick");
+  await expect(page.locator("#lb")).toBeHidden();
+  await expect(page.locator("#addCard")).toBeVisible();
+  await expect(page.locator("#name")).toHaveValue("Sentadilla goblet");
+  // cerrar sin elegir
+  await page.fill("#name", "lateral raise");
+  await page.locator("#sugg li[role=option]").first().locator(".szoom").click();
+  await page.click("#lbClose");
+  await expect(page.locator("#addCard")).toBeVisible();
+  await expect(page.locator("#name")).toHaveValue("lateral raise");
+  // Atrás / Escape cierra solo la imagen, no la ventana de agregar
+  await page.locator("#sugg li[role=option]").first().locator(".szoom").click();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#lb")).toBeHidden();
+  await expect(page.locator("#addCard")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test("sin nombre muestra un mensaje propio", async ({ page }) => {
   await start(page);
   await page.click("#addOpen");
