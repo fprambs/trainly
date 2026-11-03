@@ -7709,3 +7709,109 @@ body[data-tab="rutinas"].is-dragging.drag-join::after {
   background: var(--accent);
   color: var(--accent-ink);
 }
+
+/* rutinas: ejercicios con el mismo aspecto que las tarjetas de Hoy */
+.rutexs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+.rutexs .rutex.tcard {
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 14px 10px 10px;
+  border-top: 0;
+  background: var(--surface2);
+  box-shadow: none;
+}
+.rutexs .blkbox {
+  margin: 0;
+}
+.rutexs .blkbox .rutex.tcard {
+  background: var(--surface);
+  padding: 10px 14px 10px 10px;
+}
+.rutexs .rutex.tcard[data-rxopen] {
+  cursor: pointer;
+}
+.rxchev {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.rxchev svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.rutex.rxopen {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.rxpanel {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px 0 2px;
+  cursor: default;
+}
+.rxpanel .rxins {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+.rxpanel .rxins label {
+  gap: 6px;
+}
+.rxpanel .rxins small {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.rxpanel .rxins input {
+  min-height: 48px;
+  font-size: 1.05rem;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.rxpanel .rxdel {
+  align-self: flex-start;
+}
+/* tarjeta de rutina: mismos márgenes en los 4 lados y separación pareja */
+.rutday summary {
+  padding: 14px 16px;
+}
+.rutday .list.rutbody {
+  padding: 14px 16px 16px;
+  gap: 14px;
+}
+.rutbody .hbar {
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0;
+}
+.rutbody .hbar .rutmus {
+  gap: 8px;
+}
+.rutbody .hbar .rutmus .catchip {
+  margin: 0;
+}
+.rutbody .rutcirc,
+.rutbody .rutadd,
+.rutbody .rutfoot {
+  margin: 0;
+}
+.rutex > .rxpanel {
+  flex: 0 0 100%;
+}
+.rutexs .tinfo b {
+  color: var(--ink);
+  font-weight: 700;
+}

@@ -141,8 +141,10 @@ async function dragCard(page, from, to, where = "center") {
 test("circuito por bloques: unir arrastrando y hacerlos por rondas", async ({ page }) => {
   const errors = await start(page);
   const first = (await page.locator("#teToca .tt-info b").textContent()).trim();
-  const card = n => page.locator(".tcard", { hasText: n });
-  const names = (await page.locator(".tcard .tinfo b").allTextContents()).map(x => x.replace("★", "").trim());
+  const card = n => page.locator("#todayList .tcard", { hasText: n });
+  const names = (await page.locator("#todayList .tcard .tinfo b").allTextContents()).map(x =>
+    x.replace("★", "").trim()
+  );
   const i = names.findIndex(n => n.startsWith(first));
   const second = names[i + 1],
     third = names[i + 2];
@@ -176,7 +178,7 @@ test("circuito por bloques: unir arrastrando y hacerlos por rondas", async ({ pa
   await dragCard(page, card(third), page.locator(".blkbox .tcard").first(), "top");
   await expect(page.locator(".blkbox .tcard")).toHaveCount(3);
   // sacar uno arrastrándolo fuera (antes del primer ejercicio de la lista)
-  await dragCard(page, card(third), page.locator(".tcard").first(), "top");
+  await dragCard(page, card(third), page.locator("#todayList .tcard").first(), "top");
   await expect(page.locator(".blkbox .tcard")).toHaveCount(2);
   // separar el resto
   await page.click("[data-unblk]");
@@ -224,7 +226,7 @@ test("guía para empezar: aparece en una cuenta nueva y avanza sola", async ({ p
   await ob.locator("[data-ob=off]").click();
   await expect(ob).toBeHidden();
   await page.reload();
-  await expect(page.locator(".tcard")).toHaveCount(1);
+  await expect(page.locator("#todayList .tcard")).toHaveCount(1);
   await expect(ob).toBeHidden();
   expect(errors).toEqual([]);
 });
@@ -290,7 +292,8 @@ test("rutina desde cero: crear, agregar del banco, ajustar series y unir en circ
   await add.fill("Sentadilla con banda");
   await page.locator(".rsugg .rnewex").click();
   await expect(page.locator(".rutday[open] .rutex")).toHaveCount(3);
-  // series/reps/kg en la misma fila
+  // series/reps/kg: se abren tocando el ejercicio
+  await page.locator('.rutday[open] .rutex[data-ri="0"] .tinfo').click();
   const reps = page.locator('.rutday[open] [data-rxf="reps"][data-ri="0"]');
   await reps.fill("15");
   await page.locator('.rutday[open] [data-rxf="weight"][data-ri="0"]').click();
@@ -301,7 +304,7 @@ test("rutina desde cero: crear, agregar del banco, ajustar series y unir en circ
   await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
   await layoutOk(page);
   await page.locator(".rutday[open] [data-redit]").click();
-  await expect(page.locator(".rutday[open] .rutex").first()).toContainText("15 reps");
+  await expect(page.locator(".rutday[open] .rutex").first()).toContainText("3×15");
   await expect(page.locator(".rutday[open] .rutex").first()).toContainText("8");
   await expect(page.locator(".rutday[open] .blkbox .rutex")).toHaveCount(2);
   // cargarla en otro día queda con su circuito

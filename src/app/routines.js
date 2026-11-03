@@ -17,7 +17,8 @@ export function install(app) {
     dist: e.dist ?? null
   });
   // ---------- pestaña Rutinas ----------
-  let rutEdit = null;
+  let rutEdit = null,
+    rxOpen = null;
   const openRuts = new Set();
   let rutPick = null;
   // elegir fecha para cargar la rutina: próximos días con un toque, o cualquier fecha
@@ -71,44 +72,52 @@ export function install(app) {
       .map((r, ri) => {
         const ed = rutEdit === r.id,
           its = routineItems(r);
+        // cada ejercicio con el mismo aspecto que las tarjetas de Hoy; al editar, tocarlo abre sus campos
         const row = (it, ii) => {
           const im = app.imgOf(it.name),
-            cat = CATMAP[app.catOf(it.name)];
+            open = ed && rxOpen === r.id + ":" + ii,
+            simple = it.mins == null && it.dist == null;
           return (
-            '<div class="rutex"' +
-            (ed ? ' data-ri="' + ii + '"' : "") +
-            ">" +
-            (im
-              ? app.mediaHTML(im, "mini")
-              : '<span class="rletter" style="border-color:' +
-                cat[2] +
-                '">' +
-                esc(it.name.charAt(0).toUpperCase()) +
-                "</span>") +
-            "<div><b>" +
-            esc(it.name) +
-            "</b>" +
-            (ed && it.mins == null && it.dist == null
-              ? '<span class="rxins">' +
-                rxIn("sets", "Series", it.sets, ii, r.id) +
-                rxIn("reps", "Reps", it.reps, ii, r.id) +
-                rxIn("weight", app.perSide(it.name) ? "Kg c/u" : "Kg", it.weight, ii, r.id) +
-                "</span>"
-              : "<span>" +
-                esc(
-                  (it.sets ? it.sets + (it.sets == 1 ? " serie" : " series") : "") +
-                    (app.planText(it) ? (it.sets ? " · " : "") + app.planText(it) : "")
-                ) +
-                "</span>") +
-            "</div>" +
+            '<div class="rutex tcard' +
+            (open ? " rxopen" : "") +
+            '"' +
             (ed
-              ? '<button type="button" class="iconbtn" data-rxdel="' +
+              ? ' data-ri="' +
+                ii +
+                '" data-rxopen="' +
                 ii +
                 '" data-rid="' +
                 esc(r.id) +
-                '" aria-label="Quitar ' +
-                esc(it.name) +
-                ' de la rutina">✕</button>'
+                '" role="button" tabindex="0" aria-expanded="' +
+                open +
+                '"'
+              : "") +
+            ">" +
+            '<span class="tthumb">' +
+            (im ? app.mediaHTML(im) : "<i>" + esc(it.name.charAt(0).toUpperCase()) + "</i>") +
+            "</span>" +
+            '<span class="tinfo"><b>' +
+            esc(it.name) +
+            "</b><small>" +
+            app.figs(it) +
+            "</small></span>" +
+            (ed ? '<span class="rxchev" aria-hidden="true">' + (open ? "▴" : app.PENCIL) + "</span>" : "") +
+            (open
+              ? '<div class="rxpanel">' +
+                (simple
+                  ? '<div class="rxins">' +
+                    rxIn("sets", "Series", it.sets, ii, r.id) +
+                    rxIn("reps", "Reps", it.reps, ii, r.id) +
+                    rxIn("weight", app.perSide(it.name) ? "Kg c/u" : "Kg", it.weight, ii, r.id) +
+                    "</div>"
+                  : "") +
+                '<button type="button" class="dangerbtn rxdel" data-rxdel="' +
+                ii +
+                '" data-rid="' +
+                esc(r.id) +
+                '">' +
+                app.TRASH +
+                " Quitar de la rutina</button></div>"
               : "") +
             "</div>"
           );
@@ -265,6 +274,7 @@ export function install(app) {
   // soltar un ejercicio arrastrado en el editor (today-list.js maneja el gesto)
   app.routineDrop = (rid, i, target, d) => {
     if (i === target) return;
+    rxOpen = null;
     // si había un campo en edición, primero se guarda (y se deja de bloquear el redibujo)
     const a = document.activeElement;
     if (a && a.classList && a.classList.contains("rxin")) a.blur();
@@ -338,6 +348,12 @@ export function install(app) {
       items => items.concat([{ name: app.canonical(name), sets: 3, reps: 10, weight: null, mins: null, dist: null }]),
       true
     ).then(() => app.toast("Agregado a la rutina: " + app.canonical(name)));
+  $("rutList").addEventListener("keydown", e => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-rxopen]")) {
+      e.preventDefault();
+      e.target.click();
+    }
+  });
   $("rutList").addEventListener("input", e => {
     if (e.target.matches(".rutaddin")) rutSuggest(e.target);
   });
@@ -365,6 +381,14 @@ export function install(app) {
     if (e.target.closest("[data-rpick]")) e.preventDefault();
   });
   $("rutList").addEventListener("click", async e => {
+    const card = e.target.closest("[data-rxopen]");
+    if (card && !e.target.closest("button,input,label,.rxpanel")) {
+      if (Date.now() - app.lastDragEnd < 500) return;
+      const k = card.dataset.rid + ":" + card.dataset.rxopen;
+      rxOpen = rxOpen === k ? null : k;
+      renderRoutinesTab();
+      return;
+    }
     const b = e.target.closest("button");
     if (!b) return;
     const find = id => app.routines.findIndex(r => r.id === id);
@@ -373,6 +397,7 @@ export function install(app) {
       return;
     }
     if (b.dataset.redit) {
+      rxOpen = null;
       const id = b.dataset.redit;
       if (rutEdit === id) {
         const inp = document.querySelector('[data-rname="' + id + '"]'),
@@ -398,6 +423,7 @@ export function install(app) {
       return;
     }
     if (b.dataset.rxdel != null) {
+      rxOpen = null;
       const i = find(b.dataset.rid);
       if (i < 0) return;
       const l = app.routines.slice(),
