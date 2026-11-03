@@ -6,7 +6,7 @@ import { iso, parse, fmtDay, esc, norm } from "../lib/format.js";
 
 export function install(app) {
   const { $ } = app;
-  Object.assign(app, { renderRoutinesTab, openSaveFor });
+  Object.assign(app, { renderRoutinesTab, openSaveFor, editRoutine });
   // ---------- rutinas y sesiones anteriores ----------
   const planOf = e => ({
     name: e.name,
@@ -383,6 +383,17 @@ export function install(app) {
     let n = app.routines.length + 1;
     while (app.routines.some(r => norm(r.name) === norm("Día " + n))) n++;
     return "Día " + n;
+  }
+  // abrir el editor de una rutina (desde la guía para empezar)
+  function editRoutine(id) {
+    rutEdit = id;
+    openRuts.add(id);
+    app.showTab("rutinas");
+    renderRoutinesTab();
+    setTimeout(() => {
+      const el = document.querySelector('[data-rut="' + CSS.escape(id) + '"]');
+      if (el) el.scrollIntoView({ block: "start", behavior: "smooth" });
+    }, 60);
   }
   function openSaveFor(src) {
     saveSrc = src;

@@ -1,6 +1,6 @@
-// Guía para quien recién empieza: tres pasos en Hoy que se marcan solos según lo que ya hizo.
+// Guía para quien recién empieza: cuatro pasos en Hoy que se marcan solos según lo que ya hizo.
 // Se oculta al completarlos o al tocar "Ocultar" (se recuerda en este dispositivo).
-import { doneArr } from "../lib/sessions.js";
+import { doneArr, routineItems } from "../lib/sessions.js";
 import { esc } from "../lib/format.js";
 
 export function install(app) {
@@ -22,7 +22,8 @@ export function install(app) {
 
   function steps() {
     const mine = app.entries,
-      today = mine.filter(e => e.date === app.today);
+      today = mine.filter(e => e.date === app.today),
+      own = app.routines.filter(r => r.own);
     return [
       {
         ok: mine.length > 0,
@@ -39,11 +40,18 @@ export function install(app) {
         btn: "Empezar"
       },
       {
-        ok: app.routines.some(r => r.own),
-        t: "Guárdalo como rutina",
-        d: "La próxima vez la cargas con un toque. Para hacer circuitos, mantén presionado un ejercicio y suéltalo sobre otro.",
-        act: today.length ? "save" : null,
-        btn: "Guardar"
+        ok: own.length > 0,
+        t: "Crea tu primera rutina",
+        d: "Guarda lo que hiciste hoy como rutina: la próxima vez la cargas con un toque, hoy o en la fecha que quieras.",
+        act: today.length ? "save" : "ruts",
+        btn: today.length ? "Crear rutina" : "Ver rutinas"
+      },
+      {
+        ok: own.some(r => routineItems(r).some(it => it.link)) || mine.some(e => e.link),
+        t: "Agrupa ejercicios en circuito",
+        d: "En tu rutina toca ✎ y une ejercicios con el eslabón: se hacen por rondas (serie 1 de cada uno, luego serie 2…). En Hoy también: mantén presionado un ejercicio y suéltalo sobre otro.",
+        act: own.length ? "rutedit" : null,
+        btn: "Armar circuito"
       }
     ];
   }
@@ -106,6 +114,10 @@ export function install(app) {
     else if (a === "go") {
       const nx = app.findNext(app.entries.filter(e => e.date === app.today));
       if (nx) app.openFocus(true);
+    } else if (a === "ruts") app.showTab("rutinas");
+    else if (a === "rutedit") {
+      const r = app.routines.find(x => x.own);
+      if (r) app.editRoutine(r.id);
     } else if (a === "save") {
       app.goDay(app.today);
       app.openSaveFor({ date: app.today, g: null });

@@ -200,7 +200,7 @@ test("guía para empezar: aparece en una cuenta nueva y avanza sola", async ({ p
   const errors = await start(page, { seed: false });
   const ob = page.locator("#obBox");
   await expect(ob).toBeVisible();
-  await expect(ob).toContainText("0 de 3");
+  await expect(ob).toContainText("0 de 4");
   await layoutOk(page);
   await ob.locator("[data-ob=add]").click();
   await page.fill("#name", "Vuelo lateral");
@@ -208,7 +208,7 @@ test("guía para empezar: aparece en una cuenta nueva y avanza sola", async ({ p
   await page.fill("#reps", "12");
   await page.fill("#weight", "8");
   await page.click("#submitBtn");
-  await expect(ob).toContainText("1 de 3");
+  await expect(ob).toContainText("1 de 4");
   await expect(ob.locator("[data-ob=go]")).toBeVisible();
   await ob.locator("[data-ob=off]").click();
   await expect(ob).toBeHidden();
@@ -218,9 +218,16 @@ test("guía para empezar: aparece en una cuenta nueva y avanza sola", async ({ p
   expect(errors).toEqual([]);
 });
 
-test("guía para empezar: no aparece si ya usas la app", async ({ page }) => {
+test("guía para empezar: lleva a armar un circuito en la rutina", async ({ page }) => {
   await start(page);
-  await expect(page.locator("#obBox")).toBeHidden();
+  // ya tiene ejercicios, series y rutina: solo falta el circuito
+  const ob = page.locator("#obBox");
+  await expect(ob).toContainText("3 de 4");
+  await ob.locator("[data-ob=rutedit]").click();
+  await expect(page.locator("#tab-rutinas")).toBeVisible();
+  await page.locator("[data-rlink='0']").click();
+  await page.click("#t-anotar");
+  await expect(ob).toBeHidden();
 });
 
 test("sin nombre muestra un mensaje propio", async ({ page }) => {
