@@ -442,6 +442,7 @@ export function install(app) {
     $("todayList").hidden = !list.length;
     $("emptyDay").hidden = !!list.length;
     $("sumBtn").hidden = !list.length;
+    if (app.renderOnboard) app.renderOnboard();
 
     if (app.sumState && !$("sumOv").hidden) app.renderSummary();
     const nx = app.findNext(cur);

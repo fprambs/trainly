@@ -196,6 +196,33 @@ test("rutina: unir ejercicios en el editor y cargarla con el circuito", async ({
   await layoutOk(page);
 });
 
+test("guía para empezar: aparece en una cuenta nueva y avanza sola", async ({ page }) => {
+  const errors = await start(page, { seed: false });
+  const ob = page.locator("#obBox");
+  await expect(ob).toBeVisible();
+  await expect(ob).toContainText("0 de 3");
+  await layoutOk(page);
+  await ob.locator("[data-ob=add]").click();
+  await page.fill("#name", "Vuelo lateral");
+  await page.fill("#sets", "3");
+  await page.fill("#reps", "12");
+  await page.fill("#weight", "8");
+  await page.click("#submitBtn");
+  await expect(ob).toContainText("1 de 3");
+  await expect(ob.locator("[data-ob=go]")).toBeVisible();
+  await ob.locator("[data-ob=off]").click();
+  await expect(ob).toBeHidden();
+  await page.reload();
+  await expect(page.locator(".tcard")).toHaveCount(1);
+  await expect(ob).toBeHidden();
+  expect(errors).toEqual([]);
+});
+
+test("guía para empezar: no aparece si ya usas la app", async ({ page }) => {
+  await start(page);
+  await expect(page.locator("#obBox")).toBeHidden();
+});
+
 test("sin nombre muestra un mensaje propio", async ({ page }) => {
   await start(page);
   await page.click("#addOpen");

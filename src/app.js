@@ -18,6 +18,7 @@ import { install as installHistory } from "./app/history.js";
 import { install as installProgress } from "./app/progress.js";
 import { install as installCatalog } from "./app/catalog.js";
 import { install as installExtras } from "./app/extras.js";
+import { install as installOnboard } from "./app/onboard.js";
 
 export function startApp(env) {
   const app = { env, $: id => document.getElementById(id) };
@@ -38,6 +39,7 @@ export function startApp(env) {
   installProgress(app);
   installCatalog(app);
   installExtras(app);
+  installOnboard(app);
   app.init().then(() => {
     if (app.shortcutAct) setTimeout(() => app.runShortcut(app.shortcutAct), 80);
   });
