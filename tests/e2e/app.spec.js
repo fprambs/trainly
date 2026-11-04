@@ -553,6 +553,7 @@ test("admin: editar el banco común con 'Guardar cambios'", async ({ page }) => 
   await page.click("#t-ejercicios");
   await page.locator(".bcell", { hasText: "Remo en T" }).click();
   await expect(page.locator("#bkName")).toBeVisible();
+  await expect(page.locator('.adminbox a[href*="google.com/search"]')).toHaveAttribute("href", /Remo%20en%20T/);
   await expect(page.locator("#bkSave")).toBeDisabled();
   await page.fill("#bkName", "Remo en T (barra)");
   await expect(page.locator("#bkSave")).toBeEnabled();

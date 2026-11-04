@@ -583,6 +583,9 @@ export function install(app) {
       '<label class="bkside"><input type="checkbox" id="bkSide"' +
       (d.side ? " checked" : "") +
       "> Peso por mancuerna por defecto (para todos)</label>" +
+      '<div class="imgtools"><a class="btnlike" href="' +
+      esc(app.searchURL(d.name || n)) +
+      '" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>Buscar imagen en Google</a></div>' +
       '<div class="fiacts"><button type="button" class="btnlike" data-bkimg="1">' +
       (d.file ? "Elegir otro video" : "Cambiar video o imagen") +
       '</button><button type="button" class="btnlike danger" data-bkdel="' +
